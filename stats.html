@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>集計 | 清掃記録システム</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --green: #2d6a4f; --green-light: #52b788; --green-pale: #d8f3dc;
+    --bg: #f8faf8; --text: #1b2e1e; --muted: #6b7c6e;
+    --border: #c5d9c7; --white: #ffffff;
+    --orange: #e67e22; --orange-pale: #fef0e6;
+    --blue: #2980b9; --blue-pale: #e8f4fd;
+  }
+  body { font-family:-apple-system,'Hiragino Sans','Yu Gothic',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; font-size:15px; }
+
+  header { background:var(--green); color:white; padding:16px 20px; display:flex; align-items:center; gap:10px; position:sticky; top:0; z-index:100; box-shadow:0 2px 8px rgba(0,0,0,0.15); }
+  header .icon { font-size:22px; }
+  header div h1 { font-size:17px; font-weight:700; }
+  header div p { font-size:12px; opacity:0.75; margin-top:2px; }
+  .header-right { margin-left:auto; display:flex; gap:10px; align-items:center; }
+  .header-link { color:rgba(255,255,255,0.8); font-size:12px; text-decoration:none; white-space:nowrap; }
+
+  .container { padding:16px; max-width:700px; margin:0 auto; }
+
+  /* 期間フィルター */
+  .filter-box { background:var(--white); border-radius:12px; padding:14px 16px; margin-bottom:14px; box-shadow:0 1px 4px rgba(0,0,0,0.07); display:flex; flex-direction:column; gap:10px; }
+  .filter-box h2 { font-size:13px; font-weight:700; color:var(--green); }
+  .filter-row { display:flex; gap:8px; align-items:center; }
+  .filter-row input, .filter-row select {
+    flex:1; padding:9px 12px; border:1.5px solid var(--border); border-radius:8px;
+    font-size:14px; font-family:inherit; color:var(--text); background:var(--white);
+    appearance:none; -webkit-appearance:none;
+  }
+  .filter-row input:focus, .filter-row select:focus { outline:none; border-color:var(--green-light); }
+  .filter-row span { color:var(--muted); font-size:13px; flex-shrink:0; }
+  .btn-apply { padding:9px 16px; background:var(--green); color:white; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; white-space:nowrap; }
+  .btn-apply:active { opacity:0.8; }
+
+  /* タブ */
+  .tab-bar { display:flex; gap:6px; margin-bottom:14px; }
+  .tab-btn { flex:1; padding:10px; border:1.5px solid var(--border); border-radius:10px; background:var(--white); font-size:13px; font-weight:700; cursor:pointer; color:var(--muted); text-align:center; transition:all 0.15s; }
+  .tab-btn.active { background:var(--green); border-color:var(--green); color:white; }
+
+  /* サマリーカード */
+  .summary-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+  .summary-card { background:var(--white); border-radius:12px; padding:14px 16px; box-shadow:0 1px 4px rgba(0,0,0,0.07); text-align:center; }
+  .summary-card .num { font-size:32px; font-weight:800; color:var(--green); line-height:1; }
+  .summary-card .label { font-size:12px; color:var(--muted); margin-top:6px; }
+  .summary-card.orange .num { color:var(--orange); }
+  .summary-card.blue .num { color:var(--blue); }
+
+  /* テーブル */
+  .section { background:var(--white); border-radius:12px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,0.07); margin-bottom:14px; }
+  .section-header { background:var(--green-pale); padding:10px 16px; font-size:13px; font-weight:700; color:var(--green); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { background:var(--bg); padding:10px 12px; text-align:left; font-size:12px; color:var(--muted); font-weight:600; border-bottom:1px solid var(--border); white-space:nowrap; }
+  td { padding:11px 12px; border-bottom:1px solid #f0f4f0; }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background:#f8fdf9; }
+  .bar-wrap { display:flex; align-items:center; gap:8px; }
+  .bar { height:8px; border-radius:4px; background:var(--green-light); min-width:4px; transition:width 0.3s; }
+  .bar.orange { background:#e67e22; }
+  .num-cell { font-weight:700; color:var(--green); text-align:right; white-space:nowrap; }
+  .num-cell.orange { color:var(--orange); }
+
+  /* 天候グラフ */
+  .weather-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; padding:14px 16px; }
+  .weather-item { text-align:center; }
+  .weather-icon { font-size:28px; margin-bottom:4px; }
+  .weather-count { font-size:20px; font-weight:800; color:var(--green); }
+  .weather-label { font-size:11px; color:var(--muted); margin-top:2px; }
+
+  /* ローディング */
+  .loading { text-align:center; padding:40px 20px; color:var(--muted); font-size:14px; }
+  .spinner { display:inline-block; width:28px; height:28px; border:3px solid var(--border); border-top-color:var(--green); border-radius:50%; animation:spin 0.8s linear infinite; margin-bottom:12px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .empty { text-align:center; padding:30px 20px; color:var(--muted); font-size:14px; }
+
+  .reload-row { display:flex; justify-content:flex-end; margin-bottom:10px; }
+  .btn-reload { padding:6px 14px; border:1.5px solid var(--border); border-radius:8px; background:var(--white); font-size:12px; color:var(--muted); cursor:pointer; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="icon">📊</div>
+  <div>
+    <h1>集計</h1>
+    <p>コース・物件ごとの清掃実績</p>
+  </div>
+  <div class="header-right">
+    <a class="header-link" href="records.html">📋 記録一覧</a>
+    <a class="header-link" href="admin_properties.html">🏢 物件管理</a><a class="header-link" href="cleaning_record.html">🧹 入力</a>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- 期間フィルター -->
+  <div class="filter-box">
+    <h2>📅 集計期間</h2>
+    <div class="filter-row">
+      <input type="date" id="dateFrom">
+      <span>〜</span>
+      <input type="date" id="dateTo">
+      <button class="btn-apply" onclick="applyStats()">集計</button>
+    </div>
+    <div class="filter-row">
+      <select id="quickRange" onchange="setQuickRange()">
+        <option value="">期間を選択</option>
+        <option value="this_month">今月</option>
+        <option value="last_month">先月</option>
+        <option value="3months">過去3ヶ月</option>
+        <option value="all">全期間</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="reload-row">
+    <button class="btn-reload" onclick="loadRecords()">🔄 データ再読み込み</button>
+  </div>
+
+  <div id="statsArea">
+    <div class="loading"><div class="spinner"></div><br>データを読み込み中…</div>
+  </div>
+
+</div>
+
+<script>
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbzdI8YT_zrDKzgTV_FqmCxdZn5TdwVHXLMAUcgjvIZ2_boKVdhPEafBjf_8LslMHOXn/exec';
+  let allRecords = [];
+  let currentTab = 'course';
+
+  // 今月をデフォルトに
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  document.getElementById('dateFrom').value = `${y}-${String(m+1).padStart(2,'0')}-01`;
+  document.getElementById('dateTo').value = now.toISOString().split('T')[0];
+
+  function setQuickRange() {
+    const v = document.getElementById('quickRange').value;
+    const n = new Date();
+    const y = n.getFullYear(), mo = n.getMonth();
+    if (v === 'this_month') {
+      document.getElementById('dateFrom').value = `${y}-${String(mo+1).padStart(2,'0')}-01`;
+      document.getElementById('dateTo').value = n.toISOString().split('T')[0];
+    } else if (v === 'last_month') {
+      const lm = new Date(y, mo, 0);
+      document.getElementById('dateFrom').value = `${lm.getFullYear()}-${String(lm.getMonth()+1).padStart(2,'0')}-01`;
+      document.getElementById('dateTo').value = `${lm.getFullYear()}-${String(lm.getMonth()+1).padStart(2,'0')}-${String(lm.getDate()).padStart(2,'0')}`;
+    } else if (v === '3months') {
+      const from = new Date(y, mo-2, 1);
+      document.getElementById('dateFrom').value = `${from.getFullYear()}-${String(from.getMonth()+1).padStart(2,'0')}-01`;
+      document.getElementById('dateTo').value = n.toISOString().split('T')[0];
+    } else if (v === 'all') {
+      document.getElementById('dateFrom').value = '';
+      document.getElementById('dateTo').value = '';
+    }
+    applyStats();
+  }
+
+  async function loadRecords() {
+    document.getElementById('statsArea').innerHTML = `<div class="loading"><div class="spinner"></div><br>データを読み込み中…</div>`;
+    try {
+      const res = await fetch(GAS_URL + '?action=get');
+      allRecords = await res.json();
+      applyStats();
+    } catch(e) {
+      document.getElementById('statsArea').innerHTML = `<div class="empty">データの取得に失敗しました。再読み込みしてください。</div>`;
+    }
+  }
+
+  function applyStats() {
+    const from = document.getElementById('dateFrom').value;
+    const to = document.getElementById('dateTo').value;
+    const filtered = allRecords.filter(r => {
+      if (from && r['実施日'] < from) return false;
+      if (to && r['実施日'] > to) return false;
+      return true;
+    });
+    renderStats(filtered);
+  }
+
+  function renderStats(records) {
+    if (records.length === 0) {
+      document.getElementById('statsArea').innerHTML = `<div class="empty">該当する記録がありません</div>`;
+      return;
+    }
+
+    // サマリー
+    const totalMin = records.reduce((sum, r) => {
+      if (!r['開始時刻'] || !r['終了時刻']) return sum;
+      const [sh,sm] = r['開始時刻'].split(':').map(Number);
+      const [eh,em] = r['終了時刻'].split(':').map(Number);
+      return sum + (eh*60+em) - (sh*60+sm);
+    }, 0);
+    const withNotes = records.filter(r => r['特記事項'] && r['特記事項'].trim()).length;
+    const avgMin = Math.round(totalMin / records.length);
+
+    // コース別集計
+    const courseStat = {};
+    records.forEach(r => {
+      const c = r['コース'] || '不明';
+      if (!courseStat[c]) courseStat[c] = { count:0, notes:0, min:0 };
+      courseStat[c].count++;
+      if (r['特記事項'] && r['特記事項'].trim()) courseStat[c].notes++;
+      if (r['開始時刻'] && r['終了時刻']) {
+        const [sh,sm] = r['開始時刻'].split(':').map(Number);
+        const [eh,em] = r['終了時刻'].split(':').map(Number);
+        courseStat[c].min += (eh*60+em) - (sh*60+sm);
+      }
+    });
+
+    // 物件別集計
+    const propStat = {};
+    records.forEach(r => {
+      const p = r['物件名'] || '不明';
+      if (!propStat[p]) propStat[p] = { count:0, notes:0, course: r['コース']||'' };
+      propStat[p].count++;
+      if (r['特記事項'] && r['特記事項'].trim()) propStat[p].notes++;
+    });
+
+    // 天候集計
+    const weatherStat = { '晴':0, '曇':0, '雨':0, '雪':0 };
+    records.forEach(r => { if (r['天候'] && weatherStat[r['天候']] !== undefined) weatherStat[r['天候']]++; });
+
+    const maxCourse = Math.max(...Object.values(courseStat).map(v => v.count));
+    const maxProp = Math.max(...Object.values(propStat).map(v => v.count));
+
+    const courseRows = Object.entries(courseStat).sort((a,b) => b[1].count - a[1].count).map(([name, v]) => `
+      <tr>
+        <td>${esc(name)}</td>
+        <td><div class="bar-wrap"><div class="bar" style="width:${Math.round(v.count/maxCourse*120)}px"></div></div></td>
+        <td class="num-cell">${v.count}回</td>
+        <td class="num-cell orange">${v.notes > 0 ? v.notes+'件' : '—'}</td>
+        <td class="num-cell" style="color:var(--muted);font-weight:400">${v.count > 0 ? Math.round(v.min/v.count)+'分' : '—'}</td>
+      </tr>`).join('');
+
+    const propRows = Object.entries(propStat).sort((a,b) => b[1].count - a[1].count).map(([name, v]) => `
+      <tr>
+        <td>${esc(name)}<br><span style="font-size:11px;color:var(--muted)">${esc(v.course)}</span></td>
+        <td><div class="bar-wrap"><div class="bar" style="width:${Math.round(v.count/maxProp*120)}px"></div></div></td>
+        <td class="num-cell">${v.count}回</td>
+        <td class="num-cell orange">${v.notes > 0 ? v.notes+'件' : '—'}</td>
+      </tr>`).join('');
+
+    document.getElementById('statsArea').innerHTML = `
+      <!-- サマリー -->
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="num">${records.length}</div>
+          <div class="label">総清掃回数</div>
+        </div>
+        <div class="summary-card orange">
+          <div class="num">${withNotes}</div>
+          <div class="label">特記事項あり</div>
+        </div>
+        <div class="summary-card blue">
+          <div class="num">${avgMin}</div>
+          <div class="label">平均清掃時間（分）</div>
+        </div>
+        <div class="summary-card">
+          <div class="num">${Object.keys(propStat).length}</div>
+          <div class="label">対応物件数</div>
+        </div>
+      </div>
+
+      <!-- タブ -->
+      <div class="tab-bar">
+        <button class="tab-btn ${currentTab==='course'?'active':''}" onclick="switchTab('course')">コース別</button>
+        <button class="tab-btn ${currentTab==='property'?'active':''}" onclick="switchTab('property')">物件別</button>
+        <button class="tab-btn ${currentTab==='weather'?'active':''}" onclick="switchTab('weather')">天候</button>
+      </div>
+
+      <!-- コース別 -->
+      <div id="tab-course" style="display:${currentTab==='course'?'block':'none'}">
+        <div class="section">
+          <div class="section-header">コース別 清掃回数</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>コース</th><th>回数</th><th></th><th>特記</th><th>平均時間</th></tr></thead>
+              <tbody>${courseRows}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 物件別 -->
+      <div id="tab-property" style="display:${currentTab==='property'?'block':'none'}">
+        <div class="section">
+          <div class="section-header">物件別 清掃回数</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>物件名</th><th>回数</th><th></th><th>特記</th></tr></thead>
+              <tbody>${propRows}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 天候 -->
+      <div id="tab-weather" style="display:${currentTab==='weather'?'block':'none'}">
+        <div class="section">
+          <div class="section-header">天候別 清掃回数</div>
+          <div class="weather-grid">
+            <div class="weather-item"><div class="weather-icon">☀️</div><div class="weather-count">${weatherStat['晴']}</div><div class="weather-label">晴</div></div>
+            <div class="weather-item"><div class="weather-icon">☁️</div><div class="weather-count">${weatherStat['曇']}</div><div class="weather-label">曇</div></div>
+            <div class="weather-item"><div class="weather-icon">🌧️</div><div class="weather-count">${weatherStat['雨']}</div><div class="weather-label">雨</div></div>
+            <div class="weather-item"><div class="weather-icon">❄️</div><div class="weather-count">${weatherStat['雪']}</div><div class="weather-label">雪</div></div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function switchTab(tab) {
+    currentTab = tab;
+    ['course','property','weather'].forEach(t => {
+      const el = document.getElementById('tab-' + t);
+      if (el) el.style.display = t === tab ? 'block' : 'none';
+      document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', ['course','property','weather'][i] === tab);
+      });
+    });
+  }
+
+  function esc(str) {
+    return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  loadRecords();
+</script>
+</body>
+</html>

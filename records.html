@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>記録一覧 | 清掃記録システム</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --green: #2d6a4f; --green-light: #52b788; --green-pale: #d8f3dc;
+    --bg: #f8faf8; --text: #1b2e1e; --muted: #6b7c6e;
+    --border: #c5d9c7; --white: #ffffff; --red: #c0392b;
+  }
+  body { font-family: -apple-system,'Hiragino Sans','Yu Gothic',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; font-size:15px; }
+
+  header { background:var(--green); color:white; padding:16px 20px; display:flex; align-items:center; gap:10px; position:sticky; top:0; z-index:100; box-shadow:0 2px 8px rgba(0,0,0,0.15); }
+  header .icon { font-size:22px; }
+  header div h1 { font-size:17px; font-weight:700; }
+  header div p { font-size:12px; opacity:0.75; margin-top:2px; }
+  .header-right { margin-left:auto; display:flex; gap:10px; align-items:center; }
+  .header-link { color:rgba(255,255,255,0.8); font-size:12px; text-decoration:none; white-space:nowrap; }
+
+  .container { padding:16px; max-width:700px; margin:0 auto; }
+
+  /* 検索・フィルター */
+  .filter-box { background:var(--white); border-radius:12px; padding:14px 16px; margin-bottom:14px; box-shadow:0 1px 4px rgba(0,0,0,0.07); display:flex; flex-direction:column; gap:10px; }
+  .filter-row { display:flex; gap:8px; }
+  .filter-row input, .filter-row select {
+    flex:1; padding:9px 12px; border:1.5px solid var(--border); border-radius:8px;
+    font-size:14px; font-family:inherit; color:var(--text); background:var(--white);
+    appearance:none; -webkit-appearance:none;
+  }
+  .filter-row input:focus, .filter-row select:focus { outline:none; border-color:var(--green-light); }
+  .filter-row select {
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7c6e' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 10px center; padding-right:30px;
+  }
+  .btn-reset { padding:9px 14px; border:1.5px solid var(--border); border-radius:8px; background:var(--white); font-size:13px; color:var(--muted); cursor:pointer; white-space:nowrap; }
+  .btn-reset:active { background:var(--green-pale); }
+
+  /* 件数バー */
+  .count-bar { font-size:12px; color:var(--muted); margin-bottom:8px; padding:0 2px; display:flex; justify-content:space-between; align-items:center; }
+  .btn-reload { padding:5px 12px; border:1.5px solid var(--border); border-radius:6px; background:var(--white); font-size:12px; color:var(--muted); cursor:pointer; }
+  .btn-reload:active { background:var(--green-pale); }
+
+  /* ローディング */
+  .loading { text-align:center; padding:40px 20px; color:var(--muted); font-size:14px; }
+  .spinner { display:inline-block; width:28px; height:28px; border:3px solid var(--border); border-top-color:var(--green); border-radius:50%; animation:spin 0.8s linear infinite; margin-bottom:12px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* 記録カード */
+  .record-list { display:flex; flex-direction:column; gap:10px; }
+  .record-card { background:var(--white); border-radius:12px; padding:14px 16px; box-shadow:0 1px 4px rgba(0,0,0,0.07); cursor:pointer; transition:box-shadow 0.15s; border-left:4px solid var(--green-light); }
+  .record-card:active { box-shadow:0 2px 8px rgba(0,0,0,0.12); }
+  .record-card.has-notes { border-left-color:#f39c12; }
+
+  .card-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px; }
+  .card-property { font-size:15px; font-weight:700; }
+  .card-date { font-size:12px; color:var(--muted); }
+  .card-meta { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
+  .tag { font-size:11px; padding:3px 8px; border-radius:10px; background:var(--green-pale); color:var(--green); font-weight:600; }
+  .tag-weather { background:#e8f4fd; color:#2980b9; }
+  .tag-time { background:#f0f0f0; color:#555; }
+  .card-notes { font-size:13px; color:var(--muted); background:#fffbf0; border-radius:6px; padding:6px 10px; margin-top:6px; border-left:3px solid #f39c12; }
+
+  /* 詳細モーダル */
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:200; align-items:flex-end; justify-content:center; }
+  .modal-overlay.show { display:flex; }
+  .modal { background:var(--white); border-radius:16px 16px 0 0; padding:20px 20px 40px; width:100%; max-width:700px; max-height:85vh; overflow-y:auto; }
+  .modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+  .modal-header h2 { font-size:17px; font-weight:700; }
+  .btn-close { background:none; border:none; font-size:22px; cursor:pointer; color:var(--muted); padding:4px 8px; }
+  .modal-row { display:flex; padding:10px 0; border-bottom:1px solid #f0f4f0; gap:12px; }
+  .modal-row:last-child { border-bottom:none; }
+  .modal-label { font-size:12px; color:var(--muted); font-weight:600; width:80px; flex-shrink:0; padding-top:1px; }
+  .modal-val { font-size:14px; flex:1; line-height:1.6; }
+  .modal-notes { background:#fffbf0; border-radius:8px; padding:10px 12px; border-left:3px solid #f39c12; font-size:14px; line-height:1.6; }
+
+  .empty { text-align:center; padding:40px 20px; color:var(--muted); font-size:14px; }
+  .error-msg { text-align:center; padding:30px 20px; color:var(--red); font-size:14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="icon">📋</div>
+  <div>
+    <h1>記録一覧</h1>
+    <p>清掃実施記録の検索・閲覧</p>
+  </div>
+  <div class="header-right">
+    <a class="header-link" href="stats.html">📊 集計</a><a class="header-link" href="cleaning_record.html">🧹 入力フォーム</a>
+    <a class="header-link" href="admin_properties.html">🏢 物件管理</a>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- 検索・フィルター -->
+  <div class="filter-box">
+    <div class="filter-row">
+      <input type="text" id="searchText" placeholder="🔍 物件名・特記事項で検索" oninput="applyFilter()">
+    </div>
+    <div class="filter-row">
+      <select id="filterCourse" onchange="applyFilter()">
+        <option value="">すべてのコース</option>
+      </select>
+      <select id="filterWeather" onchange="applyFilter()">
+        <option value="">すべての天候</option>
+        <option>晴</option><option>曇</option><option>雨</option><option>雪</option>
+      </select>
+    </div>
+    <div class="filter-row">
+      <input type="date" id="filterDateFrom" onchange="applyFilter()">
+      <span style="align-self:center;color:var(--muted);font-size:13px;">〜</span>
+      <input type="date" id="filterDateTo" onchange="applyFilter()">
+      <button class="btn-reset" onclick="resetFilter()">リセット</button>
+    </div>
+  </div>
+
+  <div class="count-bar">
+    <span id="countText">読み込み中…</span>
+    <button class="btn-reload" onclick="loadRecords()">🔄 再読み込み</button>
+  </div>
+
+  <div id="listArea">
+    <div class="loading">
+      <div class="spinner"></div><br>データを読み込み中…
+    </div>
+  </div>
+
+</div>
+
+<!-- 詳細モーダル -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle"></h2>
+      <button class="btn-close" onclick="closeModalDirect()">✕</button>
+    </div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbzdI8YT_zrDKzgTV_FqmCxdZn5TdwVHXLMAUcgjvIZ2_boKVdhPEafBjf_8LslMHOXn/exec';
+  const COURSE_KEY = 'cleaning_courses';
+
+  let allRecords = [];
+
+  // コースリスト読み込み
+  function loadCourseFilter() {
+    const saved = localStorage.getItem(COURSE_KEY);
+    const courses = saved ? JSON.parse(saved) : [];
+    const sel = document.getElementById('filterCourse');
+    courses.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.name;
+      opt.textContent = c.name;
+      sel.appendChild(opt);
+    });
+  }
+
+  async function loadRecords() {
+    document.getElementById('listArea').innerHTML = `<div class="loading"><div class="spinner"></div><br>データを読み込み中…</div>`;
+    document.getElementById('countText').textContent = '読み込み中…';
+    try {
+      const res = await fetch(GAS_URL + '?action=get', { method: 'GET' });
+      const data = await res.json();
+      // 新しい順に並べる
+      allRecords = data.reverse();
+      applyFilter();
+    } catch(e) {
+      document.getElementById('listArea').innerHTML = `<div class="error-msg">データの取得に失敗しました。<br>通信状況を確認して再読み込みしてください。</div>`;
+      document.getElementById('countText').textContent = 'エラー';
+    }
+  }
+
+  function applyFilter() {
+    const q = document.getElementById('searchText').value.trim().toLowerCase();
+    const course = document.getElementById('filterCourse').value;
+    const weather = document.getElementById('filterWeather').value;
+    const from = document.getElementById('filterDateFrom').value;
+    const to = document.getElementById('filterDateTo').value;
+
+    const filtered = allRecords.filter(r => {
+      if (q && !((r['物件名']||'').toLowerCase().includes(q) || (r['特記事項']||'').toLowerCase().includes(q))) return false;
+      if (course && r['コース'] !== course) return false;
+      if (weather && r['天候'] !== weather) return false;
+      if (from && r['実施日'] < from) return false;
+      if (to && r['実施日'] > to) return false;
+      return true;
+    });
+
+    document.getElementById('countText').textContent = `${filtered.length}件 / 全${allRecords.length}件`;
+    renderList(filtered);
+  }
+
+  function renderList(records) {
+    const area = document.getElementById('listArea');
+    if (records.length === 0) {
+      area.innerHTML = `<div class="empty">条件に一致する記録がありません</div>`;
+      return;
+    }
+    area.innerHTML = `<div class="record-list">${records.map((r, i) => {
+      const hasNotes = r['特記事項'] && r['特記事項'].trim();
+      const date = r['実施日'] || '';
+      const sent = r['送信日時'] ? new Date(r['送信日時']).toLocaleDateString('ja-JP') : '';
+      return `
+        <div class="record-card ${hasNotes ? 'has-notes' : ''}" onclick="openModal(${allRecords.indexOf(r)})">
+          <div class="card-top">
+            <div class="card-property">${esc(r['物件名'] || '—')}</div>
+            <div class="card-date">${esc(date)}</div>
+          </div>
+          <div class="card-meta">
+            <span class="tag">${esc(r['コース'] || '—')}</span>
+            <span class="tag tag-weather">${esc(r['天候'] || '—')}</span>
+            <span class="tag tag-time">${esc(r['開始時刻'] || '')}〜${esc(r['終了時刻'] || '')}</span>
+          </div>
+          ${hasNotes ? `<div class="card-notes">📝 ${esc(r['特記事項'])}</div>` : ''}
+        </div>`;
+    }).join('')}</div>`;
+  }
+
+  function openModal(idx) {
+    const r = allRecords[idx];
+    document.getElementById('modalTitle').textContent = r['物件名'] || '詳細';
+    const fields = [
+      ['コース', r['コース']],
+      ['実施日', r['実施日']],
+      ['天候', r['天候']],
+      ['開始〜終了', `${r['開始時刻']}〜${r['終了時刻']}`],
+      ['清掃項目', r['清掃項目']],
+      ['追加対応', r['追加対応']],
+    ];
+    let html = fields.map(([label, val]) => `
+      <div class="modal-row">
+        <div class="modal-label">${label}</div>
+        <div class="modal-val">${esc(val || '—')}</div>
+      </div>`).join('');
+    if (r['特記事項'] && r['特記事項'].trim()) {
+      html += `<div class="modal-row"><div class="modal-label">特記事項</div><div class="modal-val"><div class="modal-notes">${esc(r['特記事項'])}</div></div></div>`;
+    }
+    const sent = r['送信日時'] ? new Date(r['送信日時']).toLocaleString('ja-JP') : '—';
+    html += `<div class="modal-row"><div class="modal-label">送信日時</div><div class="modal-val" style="font-size:12px;color:var(--muted)">${sent}</div></div>`;
+    document.getElementById('modalBody').innerHTML = html;
+    document.getElementById('modalOverlay').classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal(e) {
+    if (e.target === document.getElementById('modalOverlay')) closeModalDirect();
+  }
+  function closeModalDirect() {
+    document.getElementById('modalOverlay').classList.remove('show');
+    document.body.style.overflow = '';
+  }
+
+  function resetFilter() {
+    document.getElementById('searchText').value = '';
+    document.getElementById('filterCourse').value = '';
+    document.getElementById('filterWeather').value = '';
+    document.getElementById('filterDateFrom').value = '';
+    document.getElementById('filterDateTo').value = '';
+    applyFilter();
+  }
+
+  function esc(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  loadCourseFilter();
+  loadRecords();
+</script>
+</body>
+</html>

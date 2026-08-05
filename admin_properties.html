@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>物件・コース管理 | 清掃記録システム</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --green: #2d6a4f; --green-light: #52b788; --green-pale: #d8f3dc;
+    --bg: #f8faf8; --text: #1b2e1e; --muted: #6b7c6e;
+    --border: #c5d9c7; --white: #ffffff; --red: #c0392b; --red-pale: #fde8e8;
+  }
+  body { font-family: -apple-system,'Hiragino Sans','Yu Gothic',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; font-size:15px; }
+  header { background:var(--green); color:white; padding:16px 20px; display:flex; align-items:center; gap:10px; position:sticky; top:0; z-index:100; box-shadow:0 2px 8px rgba(0,0,0,0.15); }
+  header .icon { font-size:22px; }
+  header div h1 { font-size:17px; font-weight:700; }
+  header div p { font-size:12px; opacity:0.75; margin-top:2px; }
+  .container { padding:16px; max-width:600px; margin:0 auto; }
+
+  /* コースタブ */
+  .tab-bar { display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:14px; -webkit-overflow-scrolling:touch; }
+  .tab-bar::-webkit-scrollbar { display:none; }
+  .tab-btn { flex-shrink:0; padding:8px 14px; border:1.5px solid var(--border); border-radius:20px; background:var(--white); font-size:13px; cursor:pointer; color:var(--muted); white-space:nowrap; transition:all 0.15s; }
+  .tab-btn.active { background:var(--green); border-color:var(--green); color:white; font-weight:700; }
+
+  /* コース編集 */
+  .course-header-box { background:var(--white); border-radius:12px; padding:14px 16px; margin-bottom:14px; box-shadow:0 1px 4px rgba(0,0,0,0.07); display:flex; align-items:center; gap:8px; }
+  .course-header-box input { flex:1; padding:9px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:15px; font-family:inherit; }
+  .course-header-box input:focus { outline:none; border-color:var(--green-light); }
+  .btn-sm { padding:8px 14px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; border:none; }
+  .btn-rename { background:var(--green-pale); color:var(--green); border:1.5px solid var(--green-light); }
+  .btn-del-course { background:var(--red-pale); color:var(--red); border:1.5px solid #f5c6c6; }
+
+  /* 物件追加 */
+  .add-section { background:var(--white); border-radius:12px; padding:14px 16px; margin-bottom:14px; box-shadow:0 1px 4px rgba(0,0,0,0.07); }
+  .add-section h2 { font-size:13px; font-weight:700; color:var(--green); margin-bottom:10px; }
+  .add-row { display:flex; gap:8px; }
+  .add-row input { flex:1; padding:10px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:15px; font-family:inherit; }
+  .add-row input:focus { outline:none; border-color:var(--green-light); }
+  .btn-add { padding:10px 16px; background:var(--green); color:white; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; white-space:nowrap; }
+
+  /* コース追加 */
+  .add-course-box { background:var(--white); border-radius:12px; padding:14px 16px; margin-bottom:14px; box-shadow:0 1px 4px rgba(0,0,0,0.07); }
+  .add-course-box h2 { font-size:13px; font-weight:700; color:var(--green); margin-bottom:10px; }
+
+  /* 物件リスト */
+  .count-bar { font-size:12px; color:var(--muted); margin-bottom:8px; padding:0 2px; }
+  .prop-list { background:var(--white); border-radius:12px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,0.07); }
+  .prop-item { display:flex; align-items:center; padding:13px 16px; border-bottom:1px solid #f0f4f0; gap:8px; }
+  .prop-item:last-child { border-bottom:none; }
+  .prop-name { flex:1; font-size:14px; }
+  .prop-name.editing input { width:100%; padding:6px 10px; border:1.5px solid var(--green-light); border-radius:6px; font-size:14px; font-family:inherit; }
+  .btn-edit { padding:6px 10px; border:1.5px solid var(--border); border-radius:6px; background:var(--white); font-size:12px; color:var(--muted); cursor:pointer; }
+  .btn-save { padding:6px 10px; border:1.5px solid var(--green-light); border-radius:6px; background:var(--green-pale); font-size:12px; color:var(--green); font-weight:700; cursor:pointer; }
+  .btn-del { padding:6px 10px; border:1.5px solid #f5c6c6; border-radius:6px; background:var(--red-pale); font-size:13px; color:var(--red); cursor:pointer; }
+  .empty { text-align:center; padding:30px 20px; color:var(--muted); font-size:14px; }
+
+  .save-banner { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--green); color:white; padding:12px 28px; border-radius:30px; font-size:14px; font-weight:700; box-shadow:0 4px 16px rgba(0,0,0,0.2); opacity:0; transition:opacity 0.3s; pointer-events:none; white-space:nowrap; }
+  .save-banner.show { opacity:1; }
+  .back-link { display:block; text-align:center; margin-top:20px; margin-bottom:36px; color:var(--muted); font-size:13px; text-decoration:none; }
+  .divider { height:1px; background:var(--border); margin:8px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="icon">🏢</div>
+  <div style="flex:1">
+    <h1>物件・コース管理</h1>
+    <p>コースと物件の追加・編集・削除</p>
+  </div>
+  <div style="display:flex;gap:10px;flex-shrink:0;">
+    <a href="records.html" style="color:rgba(255,255,255,0.8);font-size:12px;text-decoration:none;">📋 記録一覧</a>
+    <a href="stats.html" style="color:rgba(255,255,255,0.8);font-size:12px;text-decoration:none;">📊 集計</a>
+    <a href="cleaning_record.html" style="color:rgba(255,255,255,0.8);font-size:12px;text-decoration:none;">🧹 入力</a>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- コースタブ -->
+  <div class="tab-bar" id="tabBar"></div>
+
+  <!-- 選択中コースの名前変更 -->
+  <div class="course-header-box" id="courseHeaderBox" style="display:none">
+    <input type="text" id="courseNameInput" placeholder="コース名">
+    <button class="btn-sm btn-rename" onclick="renameCourse()">名前変更</button>
+    <button class="btn-sm btn-del-course" onclick="deleteCourse()">コース削除</button>
+  </div>
+
+  <!-- 物件追加 -->
+  <div class="add-section" id="addPropSection" style="display:none">
+    <h2>➕ 物件を追加</h2>
+    <div class="add-row">
+      <input type="text" id="newPropInput" placeholder="物件名を入力" maxlength="50">
+      <button class="btn-add" onclick="addProperty()">追加</button>
+    </div>
+  </div>
+
+  <div class="count-bar" id="countBar"></div>
+  <div class="prop-list" id="propList"></div>
+
+  <div class="divider" style="margin:16px 0"></div>
+
+  <!-- コース追加 -->
+  <div class="add-course-box">
+    <h2>📁 新しいコースを追加</h2>
+    <div class="add-row">
+      <input type="text" id="newCourseInput" placeholder="コース名を入力">
+      <button class="btn-add" onclick="addCourse()">追加</button>
+    </div>
+  </div>
+
+  
+</div>
+
+<div class="save-banner" id="saveBanner">保存しました ✓</div>
+
+<script>
+  const STORAGE_KEY = 'cleaning_courses';
+  const DEFAULT_COURSES = [
+    { name: "コース1", properties: ["ピースヴィラ畠山","エイブル矢野東","メゾンワタナベ","ライフレビュー","ピースヴィラ矢野南","矢野西ヒルズ"] },
+    { name: "コース2", properties: ["矢野中学（本田駐車場）","宮マンション","伊藤駐車場","初花荘","エルスト横（隠土）","小学校（隠土）","隠土自宅周り","フィネス熊野","フォブール熊野","中溝（ケンシン駐車場）","貴船（美容院）"] },
+    { name: "コース3", properties: ["こうげハイツ","フォブール高下","アンルミエール","フォブール片桐","タカヤマハイツ92","由田駐車場","ＫＧスクエア","住吉コーポ","コウゲスクエア","ソレイユ"] },
+    { name: "コース4", properties: ["プルミエールＦＴ","フォブール中野東","クレール本田","アリエス南堀川","グレイスフル泉","ロジュマン"] },
+    { name: "コース5", properties: ["フォブール福原","フォブールエム","フォブール鶴江","フォブール本町","フィネス寺田","ＡＩビル","フォブール山崎"] },
+    { name: "コース6", properties: ["フォブール長楽寺","フォブール木谷","フォブール川本","ウェルベナＫ","フォブール八木","バリュー壱番館"] },
+    { name: "コース7", properties: ["土井マンション","ベルハイム東原","大下ビル","大下駐車場","パークファイブ","スカールTAKATA","フォブール高田"] },
+    { name: "コース8", properties: ["フォブール庚午","フォブール上田","フォブール住吉","フィネスＫ","ソレアード谷峰","フィネス忠末","フォブールK's"] }
+  ];
+
+  let currentCourseIdx = 0;
+
+  function load() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_COURSES));
+  }
+
+  function save(courses) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(courses));
+    const banner = document.getElementById('saveBanner');
+    banner.classList.add('show');
+    setTimeout(() => banner.classList.remove('show'), 1800);
+  }
+
+  function renderTabs() {
+    const courses = load();
+    const bar = document.getElementById('tabBar');
+    bar.innerHTML = courses.map((c, i) =>
+      `<button class="tab-btn ${i===currentCourseIdx?'active':''}" onclick="selectCourse(${i})">${esc(c.name)}</button>`
+    ).join('');
+  }
+
+  function selectCourse(idx) {
+    currentCourseIdx = idx;
+    renderTabs();
+    renderCourseDetail();
+  }
+
+  function renderCourseDetail() {
+    const courses = load();
+    const c = courses[currentCourseIdx];
+    document.getElementById('courseHeaderBox').style.display = 'flex';
+    document.getElementById('addPropSection').style.display = 'block';
+    document.getElementById('courseNameInput').value = c.name;
+    document.getElementById('countBar').textContent = `物件数：${c.properties.length}件`;
+
+    const list = document.getElementById('propList');
+    if (c.properties.length === 0) {
+      list.innerHTML = `<div class="empty">物件が登録されていません</div>`;
+      return;
+    }
+    list.innerHTML = c.properties.map((name, i) => `
+      <div class="prop-item" id="pitem-${i}">
+        <div class="prop-name" id="pname-${i}">${esc(name)}</div>
+        <button class="btn-edit" onclick="startEditProp(${i})">編集</button>
+        <button class="btn-del" onclick="deleteProp(${i})">✕</button>
+      </div>`).join('');
+  }
+
+  function renameCourse() {
+    const newName = document.getElementById('courseNameInput').value.trim();
+    if (!newName) { alert('コース名を入力してください'); return; }
+    const courses = load();
+    courses[currentCourseIdx].name = newName;
+    save(courses);
+    renderTabs();
+  }
+
+  function deleteCourse() {
+    const courses = load();
+    if (!confirm(`「${courses[currentCourseIdx].name}」を削除しますか？\n（物件データも削除されます）`)) return;
+    courses.splice(currentCourseIdx, 1);
+    if (courses.length === 0) {
+      save(courses);
+      currentCourseIdx = 0;
+      document.getElementById('courseHeaderBox').style.display = 'none';
+      document.getElementById('addPropSection').style.display = 'none';
+      document.getElementById('propList').innerHTML = '';
+      document.getElementById('countBar').textContent = '';
+      renderTabs();
+      return;
+    }
+    currentCourseIdx = Math.min(currentCourseIdx, courses.length - 1);
+    save(courses);
+    renderTabs();
+    renderCourseDetail();
+  }
+
+  function addCourse() {
+    const input = document.getElementById('newCourseInput');
+    const name = input.value.trim();
+    if (!name) { input.focus(); return; }
+    const courses = load();
+    courses.push({ name, properties: [] });
+    save(courses);
+    currentCourseIdx = courses.length - 1;
+    input.value = '';
+    renderTabs();
+    renderCourseDetail();
+  }
+
+  function addProperty() {
+    const input = document.getElementById('newPropInput');
+    const name = input.value.trim();
+    if (!name) { input.focus(); return; }
+    const courses = load();
+    if (courses[currentCourseIdx].properties.includes(name)) {
+      alert('同じ名前の物件がすでにあります'); return;
+    }
+    courses[currentCourseIdx].properties.push(name);
+    save(courses);
+    input.value = '';
+    renderCourseDetail();
+  }
+
+  function deleteProp(i) {
+    const courses = load();
+    const name = courses[currentCourseIdx].properties[i];
+    if (!confirm(`「${name}」を削除しますか？`)) return;
+    courses[currentCourseIdx].properties.splice(i, 1);
+    save(courses);
+    renderCourseDetail();
+  }
+
+  function startEditProp(i) {
+    const courses = load();
+    const name = courses[currentCourseIdx].properties[i];
+    const cell = document.getElementById(`pname-${i}`);
+    cell.classList.add('editing');
+    cell.innerHTML = `<input type="text" id="pedit-${i}" value="${esc(name)}" maxlength="50">`;
+    document.getElementById(`pedit-${i}`).focus();
+    const editBtn = cell.nextElementSibling;
+    editBtn.textContent = '保存';
+    editBtn.className = 'btn-save';
+    editBtn.onclick = () => saveEditProp(i);
+  }
+
+  function saveEditProp(i) {
+    const newName = document.getElementById(`pedit-${i}`).value.trim();
+    if (!newName) { alert('物件名を入力してください'); return; }
+    const courses = load();
+    courses[currentCourseIdx].properties[i] = newName;
+    save(courses);
+    renderCourseDetail();
+  }
+
+  function esc(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // Enterキー対応
+  document.getElementById('newPropInput').addEventListener('keydown', e => { if(e.key==='Enter') addProperty(); });
+  document.getElementById('newCourseInput').addEventListener('keydown', e => { if(e.key==='Enter') addCourse(); });
+
+  renderTabs();
+  renderCourseDetail();
+</script>
+</body>
+</html>
