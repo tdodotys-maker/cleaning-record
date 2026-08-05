@@ -118,34 +118,65 @@
 <div class="save-banner" id="saveBanner">保存しました ✓</div>
 
 <script>
-  const STORAGE_KEY = 'cleaning_courses';
-  const DEFAULT_COURSES = [
-    { name: "コース1", properties: ["ピースヴィラ畠山","エイブル矢野東","メゾンワタナベ","ライフレビュー","ピースヴィラ矢野南","矢野西ヒルズ"] },
-    { name: "コース2", properties: ["矢野中学（本田駐車場）","宮マンション","伊藤駐車場","初花荘","エルスト横（隠土）","小学校（隠土）","隠土自宅周り","フィネス熊野","フォブール熊野","中溝（ケンシン駐車場）","貴船（美容院）"] },
-    { name: "コース3", properties: ["こうげハイツ","フォブール高下","アンルミエール","フォブール片桐","タカヤマハイツ92","由田駐車場","ＫＧスクエア","住吉コーポ","コウゲスクエア","ソレイユ"] },
-    { name: "コース4", properties: ["プルミエールＦＴ","フォブール中野東","クレール本田","アリエス南堀川","グレイスフル泉","ロジュマン"] },
-    { name: "コース5", properties: ["フォブール福原","フォブールエム","フォブール鶴江","フォブール本町","フィネス寺田","ＡＩビル","フォブール山崎"] },
-    { name: "コース6", properties: ["フォブール長楽寺","フォブール木谷","フォブール川本","ウェルベナＫ","フォブール八木","バリュー壱番館"] },
-    { name: "コース7", properties: ["土井マンション","ベルハイム東原","大下ビル","大下駐車場","パークファイブ","スカールTAKATA","フォブール高田"] },
-    { name: "コース8", properties: ["フォブール庚午","フォブール上田","フォブール住吉","フィネスＫ","ソレアード谷峰","フィネス忠末","フォブールK's"] }
-  ];
-
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbzdI8YT_zrDKzgTV_FqmCxdZn5TdwVHXLMAUcgjvIZ2_boKVdhPEafBjf_8LslMHOXn/exec';
+  let courses = [];
   let currentCourseIdx = 0;
 
-  function load() {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_COURSES));
+  async function loadFromServer() {
+    showBanner('読み込み中…', false);
+    try {
+      const res = await fetch(GAS_URL + '?action=getCourses');
+      const data = await res.json();
+      if (data.length > 0) {
+        courses = data;
+      } else {
+        // スプレッドシートが空の場合はデフォルトを使用
+        courses = getDefaultCourses();
+        await saveToServer();
+      }
+    } catch(e) {
+      // 通信失敗時はデフォルト
+      courses = getDefaultCourses();
+    }
+    renderTabs();
+    renderCourseDetail();
   }
 
-  function save(courses) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(courses));
+  async function saveToServer() {
+    try {
+      await fetch(GAS_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'saveCourses', courses })
+      });
+      showBanner('保存しました ✓', true);
+    } catch(e) {
+      showBanner('保存に失敗しました', true);
+    }
+  }
+
+  function showBanner(msg, autoHide) {
     const banner = document.getElementById('saveBanner');
+    banner.textContent = msg;
     banner.classList.add('show');
-    setTimeout(() => banner.classList.remove('show'), 1800);
+    if (autoHide) setTimeout(() => banner.classList.remove('show'), 2000);
+  }
+
+  function getDefaultCourses() {
+    return [
+      { name: "コース1", properties: ["ピースヴィラ畠山","エイブル矢野東","メゾンワタナベ","ライフレビュー","ピースヴィラ矢野南","矢野西ヒルズ"] },
+      { name: "コース2", properties: ["矢野中学（本田駐車場）","宮マンション","伊藤駐車場","初花荘","エルスト横（隠土）","小学校（隠土）","隠土自宅周り","フィネス熊野","フォブール熊野","中溝（ケンシン駐車場）","貴船（美容院）"] },
+      { name: "コース3", properties: ["こうげハイツ","フォブール高下","アンルミエール","フォブール片桐","タカヤマハイツ92","由田駐車場","ＫＧスクエア","住吉コーポ","コウゲスクエア","ソレイユ"] },
+      { name: "コース4", properties: ["プルミエールＦＴ","フォブール中野東","クレール本田","アリエス南堀川","グレイスフル泉","ロジュマン"] },
+      { name: "コース5", properties: ["フォブール福原","フォブールエム","フォブール鶴江","フォブール本町","フィネス寺田","ＡＩビル","フォブール山崎"] },
+      { name: "コース6", properties: ["フォブール長楽寺","フォブール木谷","フォブール川本","ウェルベナＫ","フォブール八木","バリュー壱番館"] },
+      { name: "コース7", properties: ["土井マンション","ベルハイム東原","大下ビル","大下駐車場","パークファイブ","スカールTAKATA","フォブール高田"] },
+      { name: "コース8", properties: ["フォブール庚午","フォブール上田","フォブール住吉","フィネスＫ","ソレアード谷峰","フィネス忠末","フォブールK's"] }
+    ];
   }
 
   function renderTabs() {
-    const courses = load();
     const bar = document.getElementById('tabBar');
     bar.innerHTML = courses.map((c, i) =>
       `<button class="tab-btn ${i===currentCourseIdx?'active':''}" onclick="selectCourse(${i})">${esc(c.name)}</button>`
@@ -159,13 +190,12 @@
   }
 
   function renderCourseDetail() {
-    const courses = load();
+    if (courses.length === 0) return;
     const c = courses[currentCourseIdx];
     document.getElementById('courseHeaderBox').style.display = 'flex';
     document.getElementById('addPropSection').style.display = 'block';
     document.getElementById('courseNameInput').value = c.name;
     document.getElementById('countBar').textContent = `物件数：${c.properties.length}件`;
-
     const list = document.getElementById('propList');
     if (c.properties.length === 0) {
       list.innerHTML = `<div class="empty">物件が登録されていません</div>`;
@@ -179,73 +209,63 @@
       </div>`).join('');
   }
 
-  function renameCourse() {
+  async function renameCourse() {
     const newName = document.getElementById('courseNameInput').value.trim();
     if (!newName) { alert('コース名を入力してください'); return; }
-    const courses = load();
     courses[currentCourseIdx].name = newName;
-    save(courses);
     renderTabs();
+    await saveToServer();
   }
 
-  function deleteCourse() {
-    const courses = load();
+  async function deleteCourse() {
     if (!confirm(`「${courses[currentCourseIdx].name}」を削除しますか？\n（物件データも削除されます）`)) return;
     courses.splice(currentCourseIdx, 1);
+    currentCourseIdx = Math.min(currentCourseIdx, Math.max(courses.length - 1, 0));
     if (courses.length === 0) {
-      save(courses);
-      currentCourseIdx = 0;
       document.getElementById('courseHeaderBox').style.display = 'none';
       document.getElementById('addPropSection').style.display = 'none';
       document.getElementById('propList').innerHTML = '';
       document.getElementById('countBar').textContent = '';
-      renderTabs();
-      return;
     }
-    currentCourseIdx = Math.min(currentCourseIdx, courses.length - 1);
-    save(courses);
     renderTabs();
-    renderCourseDetail();
+    if (courses.length > 0) renderCourseDetail();
+    await saveToServer();
   }
 
-  function addCourse() {
+  async function addCourse() {
     const input = document.getElementById('newCourseInput');
     const name = input.value.trim();
     if (!name) { input.focus(); return; }
-    const courses = load();
     courses.push({ name, properties: [] });
-    save(courses);
     currentCourseIdx = courses.length - 1;
     input.value = '';
     renderTabs();
     renderCourseDetail();
+    await saveToServer();
   }
 
-  function addProperty() {
+  async function addProperty() {
     const input = document.getElementById('newPropInput');
     const name = input.value.trim();
     if (!name) { input.focus(); return; }
-    const courses = load();
     if (courses[currentCourseIdx].properties.includes(name)) {
       alert('同じ名前の物件がすでにあります'); return;
     }
     courses[currentCourseIdx].properties.push(name);
-    save(courses);
     input.value = '';
     renderCourseDetail();
+    await saveToServer();
   }
 
-  function deleteProp(i) {
-    const courses = load();
+  async function deleteProp(i) {
     const name = courses[currentCourseIdx].properties[i];
     if (!confirm(`「${name}」を削除しますか？`)) return;
     courses[currentCourseIdx].properties.splice(i, 1);
-    save(courses);
     renderCourseDetail();
+    await saveToServer();
   }
 
   function startEditProp(i) {
-    const courses = load();
     const name = courses[currentCourseIdx].properties[i];
     const cell = document.getElementById(`pname-${i}`);
     cell.classList.add('editing');
@@ -257,25 +277,22 @@
     editBtn.onclick = () => saveEditProp(i);
   }
 
-  function saveEditProp(i) {
+  async function saveEditProp(i) {
     const newName = document.getElementById(`pedit-${i}`).value.trim();
     if (!newName) { alert('物件名を入力してください'); return; }
-    const courses = load();
     courses[currentCourseIdx].properties[i] = newName;
-    save(courses);
     renderCourseDetail();
+    await saveToServer();
   }
 
   function esc(str) {
-    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
-  // Enterキー対応
   document.getElementById('newPropInput').addEventListener('keydown', e => { if(e.key==='Enter') addProperty(); });
   document.getElementById('newCourseInput').addEventListener('keydown', e => { if(e.key==='Enter') addCourse(); });
 
-  renderTabs();
-  renderCourseDetail();
+  loadFromServer();
 </script>
 </body>
 </html>
