@@ -461,33 +461,28 @@
     document.getElementById(fieldId).value = `${h}:${m}`;
   }
 
-  const STORAGE_KEY = 'cleaning_courses';
-  const DEFAULT_COURSES = [
-    { name: "コース1", properties: ["ピースヴィラ畠山","エイブル矢野東","メゾンワタナベ","ライフレビュー","ピースヴィラ矢野南","矢野西ヒルズ"] },
-    { name: "コース2", properties: ["矢野中学（本田駐車場）","宮マンション","伊藤駐車場","初花荘","エルスト横（隠土）","小学校（隠土）","隠土自宅周り","フィネス熊野","フォブール熊野","中溝（ケンシン駐車場）","貴船（美容院）"] },
-    { name: "コース3", properties: ["こうげハイツ","フォブール高下","アンルミエール","フォブール片桐","タカヤマハイツ92","由田駐車場","ＫＧスクエア","住吉コーポ","コウゲスクエア","ソレイユ"] },
-    { name: "コース4", properties: ["プルミエールＦＴ","フォブール中野東","クレール本田","アリエス南堀川","グレイスフル泉","ロジュマン"] },
-    { name: "コース5", properties: ["フォブール福原","フォブールエム","フォブール鶴江","フォブール本町","フィネス寺田","ＡＩビル","フォブール山崎"] },
-    { name: "コース6", properties: ["フォブール長楽寺","フォブール木谷","フォブール川本","ウェルベナＫ","フォブール八木","バリュー壱番館"] },
-    { name: "コース7", properties: ["土井マンション","ベルハイム東原","大下ビル","大下駐車場","パークファイブ","スカールTAKATA","フォブール高田"] },
-    { name: "コース8", properties: ["フォブール庚午","フォブール上田","フォブール住吉","フィネスＫ","ソレアード谷峰","フィネス忠末","フォブールK's"] }
-  ];
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbzdI8YT_zrDKzgTV_FqmCxdZn5TdwVHXLMAUcgjvIZ2_boKVdhPEafBjf_8LslMHOXn/exec';
+  let _courses = [];
 
-  function loadCourses() {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : DEFAULT_COURSES;
-  }
-
-  function buildCourseSelect() {
+  async function buildCourseSelect() {
+    try {
+      const res = await fetch(GAS_URL + '?action=getCourses');
+      _courses = await res.json();
+    } catch(e) {
+      _courses = [];
+    }
     const sel = document.getElementById('courseName');
-    const courses = loadCourses();
     sel.innerHTML = '<option value="">選択してください</option>';
-    courses.forEach((c, i) => {
+    _courses.forEach((c, i) => {
       const opt = document.createElement('option');
       opt.value = i;
       opt.textContent = c.name;
       sel.appendChild(opt);
     });
+  }
+
+  function loadCourses() {
+    return _courses;
   }
 
   function onCourseChange() {
@@ -498,8 +493,7 @@
       propSel.disabled = true;
       return;
     }
-    const courses = loadCourses();
-    const props = courses[idx].properties;
+    const props = _courses[idx].properties;
     propSel.innerHTML = '<option value="">選択してください</option>';
     props.forEach(name => {
       const opt = document.createElement('option');
@@ -557,13 +551,13 @@
     const courses = loadCourses();
     const courseName = courses[courseVal] ? courses[courseVal].name : '';
 
-    const GAS_URL = 'https://script.google.com/macros/s/AKfycbxnlMzNHUftmrccmF05D8yJCi84Kv5QfdIBxmW6NIqT7RvGu6nQhEibIYXmV1ELoArv/exec';
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbzdI8YT_zrDKzgTV_FqmCxdZn5TdwVHXLMAUcgjvIZ2_boKVdhPEafBjf_8LslMHOXn/exec';
 
     fetch(GAS_URL, {
       method: 'POST',
       mode: 'no-cors',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ course: courseName, property, date, weather, start, end, checks, specials, notes })
+      body: JSON.stringify({ action: 'saveRecord', course: courseName, property, date, weather, start, end, checks, specials, notes })
     })
     .then(() => {
       const d = new Date(date);
