@@ -144,21 +144,21 @@
 
 <script>
   const GAS_URL = 'https://script.google.com/macros/s/AKfycbzdI8YT_zrDKzgTV_FqmCxdZn5TdwVHXLMAUcgjvIZ2_boKVdhPEafBjf_8LslMHOXn/exec';
-  const COURSE_KEY = 'cleaning_courses';
-
   let allRecords = [];
 
-  // コースリスト読み込み
-  function loadCourseFilter() {
-    const saved = localStorage.getItem(COURSE_KEY);
-    const courses = saved ? JSON.parse(saved) : [];
-    const sel = document.getElementById('filterCourse');
-    courses.forEach(c => {
-      const opt = document.createElement('option');
-      opt.value = c.name;
-      opt.textContent = c.name;
-      sel.appendChild(opt);
-    });
+  // コースリスト読み込み（GASから取得）
+  async function loadCourseFilter() {
+    try {
+      const res = await fetch(GAS_URL + '?action=getCourses');
+      const courses = await res.json();
+      const sel = document.getElementById('filterCourse');
+      courses.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.name;
+        opt.textContent = c.name;
+        sel.appendChild(opt);
+      });
+    } catch(e) {}
   }
 
   async function loadRecords() {
