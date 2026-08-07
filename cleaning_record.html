@@ -476,7 +476,7 @@
     _courses.forEach((c, i) => {
       const opt = document.createElement('option');
       opt.value = i;
-      opt.textContent = c.name;
+      opt.textContent = `${c.code}　${c.name}`;
       sel.appendChild(opt);
     });
   }
@@ -495,10 +495,10 @@
     }
     const props = _courses[idx].properties;
     propSel.innerHTML = '<option value="">選択してください</option>';
-    props.forEach(name => {
+    props.forEach(p => {
       const opt = document.createElement('option');
-      opt.value = name;
-      opt.textContent = name;
+      opt.value = JSON.stringify({ code: p.code, name: p.name });
+      opt.textContent = `${p.code}　${p.name}`;
       propSel.appendChild(opt);
     });
     propSel.disabled = false;
@@ -527,7 +527,9 @@
   function submitForm() {
     const course = document.getElementById('courseName');
     const courseVal = course.value;
-    const property = document.getElementById('propertyName').value;
+    const propRaw = document.getElementById('propertyName').value;
+    let property = '', propertyCode = '';
+    try { const pObj = JSON.parse(propRaw); property = pObj.name; propertyCode = pObj.code; } catch(e) { property = propRaw; }
     const date = document.getElementById('cleaningDate').value;
     const weather = document.getElementById('weather').value;
     const start = document.getElementById('startTime').value;
@@ -550,6 +552,7 @@
 
     const courses = loadCourses();
     const courseName = courses[courseVal] ? courses[courseVal].name : '';
+    const courseCode = courses[courseVal] ? courses[courseVal].code : '';
 
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbz5GbL0veircw-C0PigdLC7Avj99y3_-6FL51os0ZYreGHWM-l2hmPpfaJEiWvt0SHaoA/exec';
 
@@ -557,11 +560,11 @@
       method: 'POST',
       mode: 'no-cors',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'saveRecord', course: courseName, property, date, weather, start, end, checks, specials, notes })
+      body: JSON.stringify({ action: 'saveRecord', courseCode, course: courseName, propertyCode, property, date, weather, start, end, checks, specials, notes })
     })
     .then(() => {
       const d = new Date(date);
-      const detail = `${courseName}　${property}\n${d.getMonth()+1}/${d.getDate()}（${weather}）　${start}〜${end}`;
+      const detail = `${courseCode} ${courseName}　${propertyCode} ${property}\n${d.getMonth()+1}/${d.getDate()}（${weather}）　${start}〜${end}`;
       document.getElementById('successDetail').textContent = detail;
       document.getElementById('formArea').style.display = 'none';
       document.getElementById('successArea').style.display = 'block';

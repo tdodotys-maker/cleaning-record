@@ -209,11 +209,11 @@
       return `
         <div class="record-card ${hasNotes ? 'has-notes' : ''}" onclick="openModal(${allRecords.indexOf(r)})">
           <div class="card-top">
-            <div class="card-property">${esc(r['物件名'] || '—')}</div>
+            <div class="card-property">${esc(r['物件名'] || '—')}${r['物件コード'] ? ` <span style="font-size:11px;color:var(--muted);font-weight:400">(${esc(r['物件コード'])})</span>` : ''}</div>
             <div class="card-date">${esc(date)}</div>
           </div>
           <div class="card-meta">
-            <span class="tag">${esc(r['コース'] || '—')}</span>
+            <span class="tag">${r['コースコード'] ? esc(r['コースコード'])+' ' : ''}${esc(r['コース'] || '—')}</span>
             <span class="tag tag-weather">${esc(r['天候'] || '—')}</span>
             <span class="tag tag-time">${esc(r['開始時刻'] || '')}〜${esc(r['終了時刻'] || '')}</span>
           </div>
@@ -226,7 +226,8 @@
     const r = allRecords[idx];
     document.getElementById('modalTitle').textContent = r['物件名'] || '詳細';
     const fields = [
-      ['コース', r['コース']],
+      ['コース', `${r['コースコード']||''} ${r['コース']||''}`.trim()],
+      ['物件コード', r['物件コード']],
       ['実施日', r['実施日']],
       ['天候', r['天候']],
       ['開始〜終了', `${r['開始時刻']}〜${r['終了時刻']}`],
