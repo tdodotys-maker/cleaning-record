@@ -195,7 +195,7 @@
 <div class="save-banner" id="saveBanner">保存しました ✓</div>
 
 <script>
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbwFmLuWUQqizUt0KB3WLuXXixJIQKEKmGHOk0ZRhNIcp0ghi3ZsHVQ-yJ8S1wKm50LGNQ/exec';
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbySwPVvMrkyh03Q0cjh88CRyx48Fy5Vuo9vZ8TACfjvqlF5_27jA1EJtMoqTKZMhXSBlQ/exec';
 
   let courses = [], properties = [], mappings = [];
   let currentMappingCourse = null;
@@ -294,14 +294,11 @@
 
   async function post(action, extra) {
     try {
-      const payload = JSON.stringify({ action, ...extra });
-      // GASはJSON POSTのCORSを通せないのでフォーム形式で送信
-      const form = new FormData();
-      form.append('payload', payload);
       await fetch(GAS_URL, {
         method:'POST',
         mode:'no-cors',
-        body: form
+        headers:{'Content-Type':'text/plain'},
+        body: JSON.stringify({ action, ...extra })
       });
       console.log('[POST OK]', action);
     } catch(err) {
