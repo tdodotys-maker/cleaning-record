@@ -461,7 +461,7 @@
     document.getElementById(fieldId).value = `${h}:${m}`;
   }
 
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbySwPVvMrkyh03Q0cjh88CRyx48Fy5Vuo9vZ8TACfjvqlF5_27jA1EJtMoqTKZMhXSBlQ/exec';
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbwb7yl_spwAbttSA9BoM_v8mrPl3MyLsyItcucWd3yBb3lDSCNl741-jTZnupotoziZ1w/exec';
   let _courses = [];
 
   async function buildCourseSelect() {
@@ -554,14 +554,10 @@
     const courseName = courses[courseVal] ? courses[courseVal].name : '';
     const courseCode = courses[courseVal] ? courses[courseVal].code : '';
 
-    const GAS_URL = 'https://script.google.com/macros/s/AKfycbySwPVvMrkyh03Q0cjh88CRyx48Fy5Vuo9vZ8TACfjvqlF5_27jA1EJtMoqTKZMhXSBlQ/exec';
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbwb7yl_spwAbttSA9BoM_v8mrPl3MyLsyItcucWd3yBb3lDSCNl741-jTZnupotoziZ1w/exec';
 
-    fetch(GAS_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'saveRecord', courseCode, course: courseName, propertyCode, property, date, weather, start, end, checks, specials, notes })
-    })
+    const _data = encodeURIComponent(JSON.stringify({ courseCode, course: courseName, propertyCode, property, date, weather, start, end, checks, specials, notes }));
+    fetch(GAS_URL + '?action=saveRecord&data=' + _data, { mode: 'no-cors' })
     .then(() => {
       const d = new Date(date);
       const detail = `${courseName}　${property}\n${d.getMonth()+1}/${d.getDate()}（${weather}）　${start}〜${end}`;
