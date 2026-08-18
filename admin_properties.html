@@ -293,11 +293,17 @@
   }
 
   async function post(action, extra) {
-    await fetch(GAS_URL, {
-      method:'POST', mode:'no-cors',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ action, ...extra })
-    });
+    try {
+      await fetch(GAS_URL, {
+        method:'POST', mode:'no-cors',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ action, ...extra })
+      });
+      console.log('[POST OK]', action, extra);
+    } catch(err) {
+      console.error('[POST ERROR]', action, err);
+      showBanner('通信エラー：' + err.message);
+    }
   }
 
   function showBanner(msg) {
@@ -537,6 +543,7 @@
     // 現在のコースのマッピングを順序通りに更新
     mappings = mappings.filter(m=>m.courseCode!==currentMappingCourse);
     linkedProps.forEach(p=>mappings.push({courseCode:currentMappingCourse, propertyCode:p.code}));
+    console.log('[saveMapping] rows:', JSON.stringify(mappings));
     await post('saveMappings',{rows:mappings});
     showBanner('保存しました ✓');
   }
