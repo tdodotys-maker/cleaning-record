@@ -130,7 +130,7 @@
 </div>
 
 <script>
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbz5GbL0veircw-C0PigdLC7Avj99y3_-6FL51os0ZYreGHWM-l2hmPpfaJEiWvt0SHaoA/exec';
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbyc9QDqV-d5rt4TUZDd9U-0KXnGv74t2TEx67EetVQiCEnNdvsZEUaLtH9FyjiHI-U_BA/exec';
   let allRecords = [];
   let currentTab = 'course';
 
@@ -203,14 +203,14 @@
     // コース別集計
     const courseStat = {};
     records.forEach(r => {
-      const key = r['コース'] || '不明';
-      if (!courseStat[key]) courseStat[key] = { code: r['コースコード']||'', count:0, notes:0, min:0 };
-      courseStat[key].count++;
-      if (r['特記事項'] && r['特記事項'].trim()) courseStat[key].notes++;
+      const c = r['コース'] || '不明';
+      if (!courseStat[c]) courseStat[c] = { count:0, notes:0, min:0 };
+      courseStat[c].count++;
+      if (r['特記事項'] && r['特記事項'].trim()) courseStat[c].notes++;
       if (r['開始時刻'] && r['終了時刻']) {
         const [sh,sm] = r['開始時刻'].split(':').map(Number);
         const [eh,em] = r['終了時刻'].split(':').map(Number);
-        courseStat[key].min += (eh*60+em) - (sh*60+sm);
+        courseStat[c].min += (eh*60+em) - (sh*60+sm);
       }
     });
 
@@ -218,7 +218,7 @@
     const propStat = {};
     records.forEach(r => {
       const p = r['物件名'] || '不明';
-      if (!propStat[p]) propStat[p] = { code: r['物件コード']||'', count:0, notes:0, course: r['コース']||'', courseCode: r['コースコード']||'' };
+      if (!propStat[p]) propStat[p] = { count:0, notes:0, course: r['コース']||'' };
       propStat[p].count++;
       if (r['特記事項'] && r['特記事項'].trim()) propStat[p].notes++;
     });
@@ -232,7 +232,7 @@
 
     const courseRows = Object.entries(courseStat).sort((a,b) => b[1].count - a[1].count).map(([name, v]) => `
       <tr>
-        <td><span style="font-size:11px;color:var(--muted);margin-right:4px">${esc(v.code)}</span>${esc(name)}</td>
+        <td>${esc(name)}</td>
         <td><div class="bar-wrap"><div class="bar" style="width:${Math.round(v.count/maxCourse*120)}px"></div></div></td>
         <td class="num-cell">${v.count}回</td>
         <td class="num-cell orange">${v.notes > 0 ? v.notes+'件' : '—'}</td>
@@ -241,10 +241,7 @@
 
     const propRows = Object.entries(propStat).sort((a,b) => b[1].count - a[1].count).map(([name, v]) => `
       <tr>
-        <td>
-          <span style="font-size:11px;color:var(--muted)">${esc(v.code)}</span> ${esc(name)}<br>
-          <span style="font-size:11px;color:var(--muted)">${esc(v.courseCode)} ${esc(v.course)}</span>
-        </td>
+        <td>${esc(name)}<br><span style="font-size:11px;color:var(--muted)">${esc(v.course)}</span></td>
         <td><div class="bar-wrap"><div class="bar" style="width:${Math.round(v.count/maxProp*120)}px"></div></div></td>
         <td class="num-cell">${v.count}回</td>
         <td class="num-cell orange">${v.notes > 0 ? v.notes+'件' : '—'}</td>

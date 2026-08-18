@@ -3,67 +3,99 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>物件・コース管理 | 清掃記録システム</title>
+<title>マスタ管理 | 清掃記録システム</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing:border-box; margin:0; padding:0; }
   :root {
-    --green: #2d6a4f; --green-light: #52b788; --green-pale: #d8f3dc;
-    --bg: #f8faf8; --text: #1b2e1e; --muted: #6b7c6e;
-    --border: #c5d9c7; --white: #ffffff; --red: #c0392b; --red-pale: #fde8e8;
+    --green:#2d6a4f; --green-light:#52b788; --green-pale:#d8f3dc;
+    --bg:#f8faf8; --text:#1b2e1e; --muted:#6b7c6e;
+    --border:#c5d9c7; --white:#ffffff; --red:#c0392b; --red-pale:#fde8e8;
   }
   body { font-family:-apple-system,'Hiragino Sans','Yu Gothic',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; font-size:15px; }
+
   header { background:var(--green); color:white; padding:16px 20px; display:flex; align-items:center; gap:10px; position:sticky; top:0; z-index:100; box-shadow:0 2px 8px rgba(0,0,0,0.15); }
   header .icon { font-size:22px; }
   header .title { flex:1; }
   header .title h1 { font-size:17px; font-weight:700; }
-  header .title p { font-size:12px; opacity:0.75; margin-top:2px; }
+  header .title p { font-size:12px; opacity:.75; margin-top:2px; }
   .nav { display:flex; gap:10px; flex-shrink:0; }
-  .nav a { color:rgba(255,255,255,0.8); font-size:12px; text-decoration:none; white-space:nowrap; }
+  .nav a { color:rgba(255,255,255,.8); font-size:12px; text-decoration:none; white-space:nowrap; }
+
   .container { padding:16px; max-width:640px; margin:0 auto; }
 
-  /* タブ */
-  .tab-bar { display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:14px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
-  .tab-bar::-webkit-scrollbar { display:none; }
-  .tab-btn { flex-shrink:0; padding:7px 14px; border:1.5px solid var(--border); border-radius:20px; background:var(--white); font-size:13px; cursor:pointer; color:var(--muted); white-space:nowrap; transition:all 0.15s; }
-  .tab-btn.active { background:var(--green); border-color:var(--green); color:white; font-weight:700; }
+  /* ページタブ */
+  .page-tabs { display:flex; gap:0; margin-bottom:16px; border-radius:10px; overflow:hidden; border:1.5px solid var(--border); }
+  .page-tab { flex:1; padding:11px 4px; text-align:center; font-size:13px; font-weight:700; cursor:pointer; background:var(--white); color:var(--muted); border:none; transition:all .15s; }
+  .page-tab.active { background:var(--green); color:white; }
+  .page-tab:not(:last-child) { border-right:1.5px solid var(--border); }
 
-  .section { background:var(--white); border-radius:12px; padding:14px 16px; margin-bottom:12px; box-shadow:0 1px 4px rgba(0,0,0,0.07); }
+  .page { display:none; }
+  .page.active { display:block; }
+
+  .section { background:var(--white); border-radius:12px; padding:14px 16px; margin-bottom:12px; box-shadow:0 1px 4px rgba(0,0,0,.07); }
   .section h2 { font-size:13px; font-weight:700; color:var(--green); margin-bottom:10px; }
 
   .field-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
   .field-row label { font-size:12px; color:var(--muted); font-weight:600; width:72px; flex-shrink:0; }
   .field-row input { flex:1; padding:9px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit; }
   .field-row input:focus { outline:none; border-color:var(--green-light); }
-  .code-input { max-width:90px !important; font-family:monospace !important; font-size:15px !important; }
+  .code-input { max-width:80px !important; font-family:monospace !important; }
 
-  .btn-row { display:flex; gap:8px; margin-top:4px; }
+  .btn-row { display:flex; gap:8px; flex-wrap:wrap; }
   .btn { padding:9px 16px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; border:none; white-space:nowrap; }
   .btn-green { background:var(--green); color:white; }
   .btn-pale { background:var(--green-pale); color:var(--green); border:1.5px solid var(--green-light); }
   .btn-red { background:var(--red-pale); color:var(--red); border:1.5px solid #f5c6c6; }
-  .btn:active { opacity:0.75; }
+  .btn:active { opacity:.75; }
 
-  .divider { height:1px; background:var(--border); margin:12px 0; }
-  .count-bar { font-size:12px; color:var(--muted); margin-bottom:8px; }
-
-  .prop-list { background:var(--white); border-radius:12px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,0.07); margin-bottom:12px; }
-  .prop-item { display:flex; align-items:center; padding:11px 14px; border-bottom:1px solid #f0f4f0; gap:10px; }
-  .prop-item:last-child { border-bottom:none; }
-  .prop-code { font-size:12px; font-family:monospace; background:#f0f4f0; color:var(--muted); padding:3px 8px; border-radius:6px; flex-shrink:0; min-width:56px; text-align:center; }
-  .prop-name-cell { flex:1; font-size:14px; }
-  .prop-name-cell.editing { display:flex; gap:6px; }
-  .prop-name-cell.editing input { flex:1; padding:5px 8px; border:1.5px solid var(--green-light); border-radius:6px; font-size:13px; font-family:inherit; }
-  .prop-name-cell.editing .code-edit { max-width:70px; font-family:monospace; }
+  .list-box { background:var(--white); border-radius:12px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.07); margin-bottom:12px; }
+  .list-item { display:flex; align-items:center; padding:11px 14px; border-bottom:1px solid #f0f4f0; gap:10px; }
+  .list-item:last-child { border-bottom:none; }
+  .item-code { font-size:12px; font-family:monospace; background:#f0f4f0; color:var(--muted); padding:3px 8px; border-radius:6px; flex-shrink:0; min-width:40px; text-align:center; }
+  .item-name { flex:1; font-size:14px; }
+  .item-name.editing { display:flex; gap:6px; }
+  .item-name.editing input { flex:1; padding:5px 8px; border:1.5px solid var(--green-light); border-radius:6px; font-size:13px; font-family:inherit; }
+  .item-name.editing .ci { max-width:70px; font-family:monospace; }
   .btn-edit { padding:5px 10px; border:1.5px solid var(--border); border-radius:6px; background:var(--white); font-size:12px; color:var(--muted); cursor:pointer; }
   .btn-save { padding:5px 10px; border:1.5px solid var(--green-light); border-radius:6px; background:var(--green-pale); font-size:12px; color:var(--green); font-weight:700; cursor:pointer; }
   .btn-del { padding:5px 10px; border:1.5px solid #f5c6c6; border-radius:6px; background:var(--red-pale); font-size:12px; color:var(--red); cursor:pointer; }
 
+  /* コース物件紐付け */
+  .course-select-bar { display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:12px; scrollbar-width:none; }
+  .course-select-bar::-webkit-scrollbar { display:none; }
+  .cs-btn { flex-shrink:0; padding:7px 12px; border:1.5px solid var(--border); border-radius:20px; background:var(--white); font-size:13px; cursor:pointer; color:var(--muted); white-space:nowrap; transition:all .15s; }
+  .cs-btn.active { background:var(--green); border-color:var(--green); color:white; font-weight:700; }
+
+  .prop-check-list { display:flex; flex-direction:column; gap:6px; }
+  .prop-check { display:flex; align-items:center; gap:10px; padding:9px 12px; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; }
+  .prop-check input[type=checkbox] { width:18px; height:18px; accent-color:var(--green); flex-shrink:0; cursor:pointer; }
+  .prop-check:has(input:checked) { background:var(--green-pale); border-color:var(--green-light); }
+  .prop-check .pc { font-size:11px; font-family:monospace; color:var(--muted); width:32px; flex-shrink:0; }
+  .prop-check .pn { font-size:14px; }
+
+  .count-bar { font-size:12px; color:var(--muted); margin-bottom:8px; }
   .empty { text-align:center; padding:24px; color:var(--muted); font-size:14px; }
   .loading { text-align:center; padding:30px; color:var(--muted); font-size:14px; }
-  .spinner { display:inline-block; width:22px; height:22px; border:3px solid var(--border); border-top-color:var(--green); border-radius:50%; animation:spin 0.8s linear infinite; margin-right:8px; vertical-align:middle; }
+  .spinner { display:inline-block; width:22px; height:22px; border:3px solid var(--border); border-top-color:var(--green); border-radius:50%; animation:spin .8s linear infinite; margin-right:8px; vertical-align:middle; }
   @keyframes spin { to { transform:rotate(360deg); } }
 
-  .save-banner { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--green); color:white; padding:11px 26px; border-radius:30px; font-size:14px; font-weight:700; box-shadow:0 4px 16px rgba(0,0,0,0.2); opacity:0; transition:opacity 0.3s; pointer-events:none; white-space:nowrap; }
+  /* 2カラム紐付け */
+  .mapping-cols { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media(max-width:480px){ .mapping-cols { grid-template-columns:1fr; } }
+  .col-box { background:var(--white); border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,.07); overflow:hidden; }
+  .col-header { background:var(--green-pale); padding:10px 14px; font-size:13px; font-weight:700; color:var(--green); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+  .col-body { padding:8px; display:flex; flex-direction:column; gap:6px; min-height:80px; max-height:55vh; overflow-y:auto; }
+  .map-item { display:flex; align-items:center; gap:6px; padding:8px 10px; border:1.5px solid var(--border); border-radius:8px; background:var(--white); font-size:13px; }
+  .map-item .mc { font-size:11px; font-family:monospace; color:var(--muted); flex-shrink:0; min-width:24px; }
+  .map-item .mn { flex:1; }
+  .btn-add-prop { padding:5px 10px; border:none; border-radius:6px; background:var(--green); color:white; font-size:13px; font-weight:700; cursor:pointer; flex-shrink:0; }
+  .btn-add-prop:active { opacity:.75; }
+  .btn-move { padding:4px 7px; border:1.5px solid var(--border); border-radius:5px; background:var(--white); font-size:12px; cursor:pointer; color:var(--muted); flex-shrink:0; }
+  .btn-move:active { background:var(--green-pale); }
+  .btn-remove { padding:4px 7px; border:1.5px solid #f5c6c6; border-radius:5px; background:var(--red-pale); font-size:12px; color:var(--red); cursor:pointer; flex-shrink:0; }
+  .empty-col { text-align:center; padding:20px 10px; color:var(--muted); font-size:13px; }
+
+  .save-banner { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--green); color:white; padding:11px 26px; border-radius:30px; font-size:14px; font-weight:700; box-shadow:0 4px 16px rgba(0,0,0,.2); opacity:0; transition:opacity .3s; pointer-events:none; white-space:nowrap; z-index:999; }
   .save-banner.show { opacity:1; }
 </style>
 </head>
@@ -72,11 +104,11 @@
 <header>
   <div class="icon">🏢</div>
   <div class="title">
-    <h1>物件・コース管理</h1>
-    <p>コードと名前の追加・編集・削除</p>
+    <h1>マスタ管理</h1>
+    <p>コース・物件・紐付けの管理</p>
   </div>
   <div class="nav">
-    <a href="records.html">📋 記録一覧</a>
+    <a href="records.html">📋 記録</a>
     <a href="stats.html">📊 集計</a>
     <a href="cleaning_record.html">🧹 入力</a>
   </div>
@@ -84,62 +116,77 @@
 
 <div class="container">
 
-  <!-- コースタブ -->
-  <div class="tab-bar" id="tabBar">
-    <div class="loading"><span class="spinner"></span>読み込み中…</div>
+  <div class="page-tabs">
+    <button class="page-tab active" onclick="switchPage('course')">コース</button>
+    <button class="page-tab" onclick="switchPage('property')">物件</button>
+    <button class="page-tab" onclick="switchPage('mapping')">コース物件</button>
   </div>
 
-  <!-- 選択中コースの編集 -->
-  <div class="section" id="courseEditBox" style="display:none">
-    <h2>✏️ コース編集</h2>
-    <div class="field-row">
-      <label>コースコード</label>
-      <input type="text" id="courseCodeInput" class="code-input" placeholder="01" maxlength="10">
+  <!-- コース管理 -->
+  <div class="page active" id="page-course">
+    <div class="section">
+      <h2>➕ コースを追加</h2>
+      <div class="field-row">
+        <label>コードコード</label>
+        <input type="text" id="newCourseCode" class="code-input" placeholder="9">
+      </div>
+      <div class="field-row">
+        <label>コース名</label>
+        <input type="text" id="newCourseName" placeholder="コース名を入力">
+      </div>
+      <div class="btn-row"><button class="btn btn-green" onclick="addCourse()">追加</button></div>
     </div>
-    <div class="field-row">
-      <label>コース名</label>
-      <input type="text" id="courseNameInput" placeholder="コース名" maxlength="30">
-    </div>
-    <div class="btn-row">
-      <button class="btn btn-pale" onclick="updateCourse()">コースを更新</button>
-      <button class="btn btn-red" onclick="deleteCourse()">コースを削除</button>
-    </div>
+    <div class="count-bar" id="courseCount"></div>
+    <div id="courseList"><div class="loading"><span class="spinner"></span>読み込み中…</div></div>
   </div>
 
-  <!-- 物件追加 -->
-  <div class="section" id="addPropBox" style="display:none">
-    <h2>➕ 物件を追加</h2>
-    <div class="field-row">
-      <label>物件コード</label>
-      <input type="text" id="newPropCode" class="code-input" placeholder="01-01" maxlength="20">
+  <!-- 物件管理 -->
+  <div class="page" id="page-property">
+    <div class="section">
+      <h2>➕ 物件を追加</h2>
+      <div class="field-row">
+        <label>物件コード</label>
+        <input type="text" id="newPropCode" class="code-input" placeholder="1">
+      </div>
+      <div class="field-row">
+        <label>物件名</label>
+        <input type="text" id="newPropName" placeholder="物件名を入力">
+      </div>
+      <div class="btn-row"><button class="btn btn-green" onclick="addProperty()">追加</button></div>
     </div>
-    <div class="field-row">
-      <label>物件名</label>
-      <input type="text" id="newPropName" placeholder="物件名を入力" maxlength="50">
-    </div>
-    <div class="btn-row">
-      <button class="btn btn-green" onclick="addProperty()">追加</button>
-    </div>
+    <div class="count-bar" id="propCount"></div>
+    <div id="propList"><div class="loading"><span class="spinner"></span>読み込み中…</div></div>
   </div>
 
-  <div class="count-bar" id="countBar"></div>
-  <div id="propList"></div>
-
-  <div class="divider"></div>
-
-  <!-- コース追加 -->
-  <div class="section">
-    <h2>📁 新しいコースを追加</h2>
-    <div class="field-row">
-      <label>コースコード</label>
-      <input type="text" id="newCourseCode" class="code-input" placeholder="09" maxlength="10">
+  <!-- コース物件紐付け -->
+  <div class="page" id="page-mapping">
+    <div class="section" style="margin-bottom:12px">
+      <h2>コースを選択</h2>
+      <div class="course-select-bar" id="courseSelectBar">
+        <div class="loading"><span class="spinner"></span>読み込み中…</div>
+      </div>
     </div>
-    <div class="field-row">
-      <label>コース名</label>
-      <input type="text" id="newCourseName" placeholder="コース名を入力" maxlength="30">
-    </div>
-    <div class="btn-row">
-      <button class="btn btn-green" onclick="addCourse()">追加</button>
+    <div class="mapping-cols">
+      <!-- 左：未紐付け物件 -->
+      <div class="col-box">
+        <div class="col-header">
+          <span>未紐付けの物件</span>
+          <span id="unlinkedCount" style="font-size:11px;font-weight:400"></span>
+        </div>
+        <div class="col-body" id="unlinkedList">
+          <div class="empty-col">コースを選択してください</div>
+        </div>
+      </div>
+      <!-- 右：紐付き物件 -->
+      <div class="col-box">
+        <div class="col-header">
+          <span id="linkedTitle">紐付き物件</span>
+          <button class="btn btn-pale" style="font-size:11px;padding:4px 10px" onclick="saveMapping()">保存</button>
+        </div>
+        <div class="col-body" id="linkedList">
+          <div class="empty-col">コースを選択してください</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -148,224 +195,357 @@
 <div class="save-banner" id="saveBanner">保存しました ✓</div>
 
 <script>
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbz5GbL0veircw-C0PigdLC7Avj99y3_-6FL51os0ZYreGHWM-l2hmPpfaJEiWvt0SHaoA/exec';
-  let courses = [];
-  let currentIdx = 0;
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbyc9QDqV-d5rt4TUZDd9U-0KXnGv74t2TEx67EetVQiCEnNdvsZEUaLtH9FyjiHI-U_BA/exec';
+
+  let courses = [], properties = [], mappings = [];
+  let currentMappingCourse = null;
 
   const DEFAULT_COURSES = [
-    { code:"01", name:"コース1", properties:[
-      {code:"01-01",name:"ピースヴィラ畠山"},{code:"01-02",name:"エイブル矢野東"},
-      {code:"01-03",name:"メゾンワタナベ"},{code:"01-04",name:"ライフレビュー"},
-      {code:"01-05",name:"ピースヴィラ矢野南"},{code:"01-06",name:"矢野西ヒルズ"}]},
-    { code:"02", name:"コース2", properties:[
-      {code:"02-01",name:"矢野中学（本田駐車場）"},{code:"02-02",name:"宮マンション"},
-      {code:"02-03",name:"伊藤駐車場"},{code:"02-04",name:"初花荘"},
-      {code:"02-05",name:"エルスト横（隠土）"},{code:"02-06",name:"小学校（隠土）"},
-      {code:"02-07",name:"隠土自宅周り"},{code:"02-08",name:"フィネス熊野"},
-      {code:"02-09",name:"フォブール熊野"},{code:"02-10",name:"中溝（ケンシン駐車場）"},
-      {code:"02-11",name:"貴船（美容院）"}]},
-    { code:"03", name:"コース3", properties:[
-      {code:"03-01",name:"こうげハイツ"},{code:"03-02",name:"フォブール高下"},
-      {code:"03-03",name:"アンルミエール"},{code:"03-04",name:"フォブール片桐"},
-      {code:"03-05",name:"タカヤマハイツ92"},{code:"03-06",name:"由田駐車場"},
-      {code:"03-07",name:"ＫＧスクエア"},{code:"03-08",name:"住吉コーポ"},
-      {code:"03-09",name:"コウゲスクエア"},{code:"03-10",name:"ソレイユ"}]},
-    { code:"04", name:"コース4", properties:[
-      {code:"04-01",name:"プルミエールＦＴ"},{code:"04-02",name:"フォブール中野東"},
-      {code:"04-03",name:"クレール本田"},{code:"04-04",name:"アリエス南堀川"},
-      {code:"04-05",name:"グレイスフル泉"},{code:"04-06",name:"ロジュマン"}]},
-    { code:"05", name:"コース5", properties:[
-      {code:"05-01",name:"フォブール福原"},{code:"05-02",name:"フォブールエム"},
-      {code:"05-03",name:"フォブール鶴江"},{code:"05-04",name:"フォブール本町"},
-      {code:"05-05",name:"フィネス寺田"},{code:"05-06",name:"ＡＩビル"},
-      {code:"05-07",name:"フォブール山崎"}]},
-    { code:"06", name:"コース6", properties:[
-      {code:"06-01",name:"フォブール長楽寺"},{code:"06-02",name:"フォブール木谷"},
-      {code:"06-03",name:"フォブール川本"},{code:"06-04",name:"ウェルベナＫ"},
-      {code:"06-05",name:"フォブール八木"},{code:"06-06",name:"バリュー壱番館"}]},
-    { code:"07", name:"コース7", properties:[
-      {code:"07-01",name:"土井マンション"},{code:"07-02",name:"ベルハイム東原"},
-      {code:"07-03",name:"大下ビル"},{code:"07-04",name:"大下駐車場"},
-      {code:"07-05",name:"パークファイブ"},{code:"07-06",name:"スカールTAKATA"},
-      {code:"07-07",name:"フォブール高田"}]},
-    { code:"08", name:"コース8", properties:[
-      {code:"08-01",name:"フォブール庚午"},{code:"08-02",name:"フォブール上田"},
-      {code:"08-03",name:"フォブール住吉"},{code:"08-04",name:"フィネスＫ"},
-      {code:"08-05",name:"ソレアード谷峰"},{code:"08-06",name:"フィネス忠末"},
-      {code:"08-07",name:"フォブールK's"}]}
+    {code:'1',name:'コース1'},{code:'2',name:'コース2'},{code:'3',name:'コース3'},
+    {code:'4',name:'コース4'},{code:'5',name:'コース5'},{code:'6',name:'コース6'},
+    {code:'7',name:'コース7'},{code:'8',name:'コース8'}
+  ];
+  const DEFAULT_PROPERTIES = [
+    {code:'1',name:'ピースヴィラ畠山'},{code:'2',name:'エイブル矢野東'},
+    {code:'3',name:'メゾンワタナベ'},{code:'4',name:'ライフレビュー'},
+    {code:'5',name:'ピースヴィラ矢野南'},{code:'6',name:'矢野西ヒルズ'},
+    {code:'7',name:'矢野中学（本田駐車場）'},{code:'8',name:'宮マンション'},
+    {code:'9',name:'伊藤駐車場'},{code:'10',name:'初花荘'},
+    {code:'11',name:'エルスト横（隠土）'},{code:'12',name:'小学校（隠土）'},
+    {code:'13',name:'隠土自宅周り'},{code:'14',name:'フィネス熊野'},
+    {code:'15',name:'フォブール熊野'},{code:'16',name:'中溝（ケンシン駐車場）'},
+    {code:'17',name:'貴船（美容院）'},{code:'18',name:'こうげハイツ'},
+    {code:'19',name:'フォブール高下'},{code:'20',name:'アンルミエール'},
+    {code:'21',name:'フォブール片桐'},{code:'22',name:'タカヤマハイツ92'},
+    {code:'23',name:'由田駐車場'},{code:'24',name:'ＫＧスクエア'},
+    {code:'25',name:'住吉コーポ'},{code:'26',name:'コウゲスクエア'},
+    {code:'27',name:'ソレイユ'},{code:'28',name:'プルミエールＦＴ'},
+    {code:'29',name:'フォブール中野東'},{code:'30',name:'クレール本田'},
+    {code:'31',name:'アリエス南堀川'},{code:'32',name:'グレイスフル泉'},
+    {code:'33',name:'ロジュマン'},{code:'34',name:'フォブール福原'},
+    {code:'35',name:'フォブールエム'},{code:'36',name:'フォブール鶴江'},
+    {code:'37',name:'フォブール本町'},{code:'38',name:'フィネス寺田'},
+    {code:'39',name:'ＡＩビル'},{code:'40',name:'フォブール山崎'},
+    {code:'41',name:'フォブール長楽寺'},{code:'42',name:'フォブール木谷'},
+    {code:'43',name:'フォブール川本'},{code:'44',name:'ウェルベナＫ'},
+    {code:'45',name:'フォブール八木'},{code:'46',name:'バリュー壱番館'},
+    {code:'47',name:'土井マンション'},{code:'48',name:'ベルハイム東原'},
+    {code:'49',name:'大下ビル'},{code:'50',name:'大下駐車場'},
+    {code:'51',name:'パークファイブ'},{code:'52',name:'スカールTAKATA'},
+    {code:'53',name:'フォブール高田'},{code:'54',name:'フォブール庚午'},
+    {code:'55',name:'フォブール上田'},{code:'56',name:'フォブール住吉'},
+    {code:'57',name:'フィネスＫ'},{code:'58',name:'ソレアード谷峰'},
+    {code:'59',name:'フィネス忠末'},{code:'60',name:"フォブールK's"}
+  ];
+  const DEFAULT_MAPPINGS = [
+    {courseCode:'1',propertyCode:'1'},{courseCode:'1',propertyCode:'2'},
+    {courseCode:'1',propertyCode:'3'},{courseCode:'1',propertyCode:'4'},
+    {courseCode:'1',propertyCode:'5'},{courseCode:'1',propertyCode:'6'},
+    {courseCode:'2',propertyCode:'7'},{courseCode:'2',propertyCode:'8'},
+    {courseCode:'2',propertyCode:'9'},{courseCode:'2',propertyCode:'10'},
+    {courseCode:'2',propertyCode:'11'},{courseCode:'2',propertyCode:'12'},
+    {courseCode:'2',propertyCode:'13'},{courseCode:'2',propertyCode:'14'},
+    {courseCode:'2',propertyCode:'15'},{courseCode:'2',propertyCode:'16'},
+    {courseCode:'2',propertyCode:'17'},{courseCode:'3',propertyCode:'18'},
+    {courseCode:'3',propertyCode:'19'},{courseCode:'3',propertyCode:'20'},
+    {courseCode:'3',propertyCode:'21'},{courseCode:'3',propertyCode:'22'},
+    {courseCode:'3',propertyCode:'23'},{courseCode:'3',propertyCode:'24'},
+    {courseCode:'3',propertyCode:'25'},{courseCode:'3',propertyCode:'26'},
+    {courseCode:'3',propertyCode:'27'},{courseCode:'4',propertyCode:'28'},
+    {courseCode:'4',propertyCode:'29'},{courseCode:'4',propertyCode:'30'},
+    {courseCode:'4',propertyCode:'31'},{courseCode:'4',propertyCode:'32'},
+    {courseCode:'4',propertyCode:'33'},{courseCode:'5',propertyCode:'34'},
+    {courseCode:'5',propertyCode:'35'},{courseCode:'5',propertyCode:'36'},
+    {courseCode:'5',propertyCode:'37'},{courseCode:'5',propertyCode:'38'},
+    {courseCode:'5',propertyCode:'39'},{courseCode:'5',propertyCode:'40'},
+    {courseCode:'6',propertyCode:'41'},{courseCode:'6',propertyCode:'42'},
+    {courseCode:'6',propertyCode:'43'},{courseCode:'6',propertyCode:'44'},
+    {courseCode:'6',propertyCode:'45'},{courseCode:'6',propertyCode:'46'},
+    {courseCode:'7',propertyCode:'47'},{courseCode:'7',propertyCode:'48'},
+    {courseCode:'7',propertyCode:'49'},{courseCode:'7',propertyCode:'50'},
+    {courseCode:'7',propertyCode:'51'},{courseCode:'7',propertyCode:'52'},
+    {courseCode:'7',propertyCode:'53'},{courseCode:'8',propertyCode:'54'},
+    {courseCode:'8',propertyCode:'55'},{courseCode:'8',propertyCode:'56'},
+    {courseCode:'8',propertyCode:'57'},{courseCode:'8',propertyCode:'58'},
+    {courseCode:'8',propertyCode:'59'},{courseCode:'8',propertyCode:'60'}
   ];
 
-  async function loadFromServer() {
+  // =====================
+  // 初期読み込み
+  // =====================
+  async function loadAll() {
     try {
-      const res = await fetch(GAS_URL + '?action=getCourses');
-      const data = await res.json();
-      courses = data.length > 0 ? data : DEFAULT_COURSES;
-      if (data.length === 0) await saveToServer();
+      const [cr, pr, mr] = await Promise.all([
+        fetch(GAS_URL+'?action=getCourses').then(r=>r.json()),
+        fetch(GAS_URL+'?action=getProperties').then(r=>r.json()),
+        fetch(GAS_URL+'?action=getMappings').then(r=>r.json())
+      ]);
+      courses    = cr.length    ? cr : DEFAULT_COURSES;
+      properties = pr.length    ? pr : DEFAULT_PROPERTIES;
+      mappings   = mr.length    ? mr : DEFAULT_MAPPINGS;
+      if (!cr.length)  await post('saveCourses',    { rows: courses });
+      if (!pr.length)  await post('saveProperties', { rows: properties });
+      if (!mr.length)  await post('saveMappings',   { rows: mappings });
     } catch(e) {
-      courses = DEFAULT_COURSES;
+      courses = DEFAULT_COURSES; properties = DEFAULT_PROPERTIES; mappings = DEFAULT_MAPPINGS;
     }
-    renderTabs();
-    renderCourseDetail();
+    renderCourses(); renderProperties(); renderMappingCourseBar();
   }
 
-  async function saveToServer() {
-    try {
-      await fetch(GAS_URL, {
-        method:'POST', mode:'no-cors',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ action:'saveCourses', courses })
-      });
-      showBanner('保存しました ✓');
-    } catch(e) {
-      showBanner('保存に失敗しました');
-    }
+  async function post(action, extra) {
+    await fetch(GAS_URL, {
+      method:'POST', mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action, ...extra })
+    });
   }
 
   function showBanner(msg) {
     const b = document.getElementById('saveBanner');
     b.textContent = msg;
     b.classList.add('show');
-    setTimeout(() => b.classList.remove('show'), 2000);
+    setTimeout(()=>b.classList.remove('show'), 2000);
   }
 
-  function renderTabs() {
-    document.getElementById('tabBar').innerHTML = courses.map((c, i) =>
-      `<button class="tab-btn ${i===currentIdx?'active':''}" onclick="selectCourse(${i})">
-        <span style="font-size:11px;opacity:0.7">${esc(c.code)}</span> ${esc(c.name)}
-      </button>`
-    ).join('');
+  // =====================
+  // ページ切り替え
+  // =====================
+  function switchPage(name) {
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.page-tab').forEach(t=>t.classList.remove('active'));
+    document.getElementById('page-'+name).classList.add('active');
+    event.target.classList.add('active');
   }
 
-  function selectCourse(idx) {
-    currentIdx = idx;
-    renderTabs();
-    renderCourseDetail();
-  }
-
-  function renderCourseDetail() {
-    if (courses.length === 0) return;
-    const c = courses[currentIdx];
-    document.getElementById('courseEditBox').style.display = 'block';
-    document.getElementById('addPropBox').style.display = 'block';
-    document.getElementById('courseCodeInput').value = c.code;
-    document.getElementById('courseNameInput').value = c.name;
-
-    // 物件コードの次の番号を自動入力
-    const nextNum = c.properties.length + 1;
-    document.getElementById('newPropCode').value = `${c.code}-${String(nextNum).padStart(2,'0')}`;
-    document.getElementById('newPropName').value = '';
-
-    document.getElementById('countBar').textContent = `物件数：${c.properties.length}件`;
-
-    const list = document.getElementById('propList');
-    if (c.properties.length === 0) {
-      list.innerHTML = `<div class="prop-list"><div class="empty">物件が登録されていません</div></div>`;
-      return;
-    }
-    list.innerHTML = `<div class="prop-list">${c.properties.map((p, i) => `
-      <div class="prop-item" id="pitem-${i}">
-        <div class="prop-code" id="pcode-${i}">${esc(p.code)}</div>
-        <div class="prop-name-cell" id="pname-${i}">${esc(p.name)}</div>
-        <button class="btn-edit" onclick="startEditProp(${i})">編集</button>
-        <button class="btn-del" onclick="deleteProp(${i})">✕</button>
+  // =====================
+  // コース管理
+  // =====================
+  function renderCourses() {
+    document.getElementById('courseCount').textContent = `全${courses.length}件`;
+    const el = document.getElementById('courseList');
+    if (!courses.length) { el.innerHTML=`<div class="empty">コースがありません</div>`; return; }
+    el.innerHTML = `<div class="list-box">${courses.map((c,i)=>`
+      <div class="list-item">
+        <div class="item-code" id="ccode-${i}">${esc(c.code)}</div>
+        <div class="item-name" id="cname-${i}">${esc(c.name)}</div>
+        <button class="btn-edit" onclick="editCourse(${i})">編集</button>
+        <button class="btn-del" onclick="delCourse(${i})">✕</button>
       </div>`).join('')}</div>`;
-  }
-
-  async function updateCourse() {
-    const code = document.getElementById('courseCodeInput').value.trim();
-    const name = document.getElementById('courseNameInput').value.trim();
-    if (!code) { alert('コースコードを入力してください'); return; }
-    if (!name) { alert('コース名を入力してください'); return; }
-    courses[currentIdx].code = code;
-    courses[currentIdx].name = name;
-    renderTabs();
-    renderCourseDetail();
-    await saveToServer();
-  }
-
-  async function deleteCourse() {
-    const c = courses[currentIdx];
-    if (!confirm(`「${c.code} ${c.name}」を削除しますか？\n（物件データも削除されます）`)) return;
-    courses.splice(currentIdx, 1);
-    currentIdx = Math.min(currentIdx, Math.max(courses.length-1, 0));
-    if (courses.length === 0) {
-      document.getElementById('courseEditBox').style.display = 'none';
-      document.getElementById('addPropBox').style.display = 'none';
-      document.getElementById('propList').innerHTML = '';
-      document.getElementById('countBar').textContent = '';
-    }
-    renderTabs();
-    if (courses.length > 0) renderCourseDetail();
-    await saveToServer();
   }
 
   async function addCourse() {
     const code = document.getElementById('newCourseCode').value.trim();
     const name = document.getElementById('newCourseName').value.trim();
-    if (!code) { alert('コースコードを入力してください'); return; }
-    if (!name) { alert('コース名を入力してください'); return; }
-    if (courses.find(c => c.code === code)) { alert('同じコードがすでにあります'); return; }
-    courses.push({ code, name, properties: [] });
-    currentIdx = courses.length - 1;
-    document.getElementById('newCourseCode').value = '';
-    document.getElementById('newCourseName').value = '';
-    renderTabs();
-    renderCourseDetail();
-    await saveToServer();
+    if (!code||!name) { alert('コードと名前を入力してください'); return; }
+    if (courses.find(c=>c.code===code)) { alert('同じコードがすでにあります'); return; }
+    courses.push({code,name});
+    document.getElementById('newCourseCode').value='';
+    document.getElementById('newCourseName').value='';
+    renderCourses(); renderMappingCourseBar();
+    await post('saveCourses',{rows:courses}); showBanner('保存しました ✓');
+  }
+
+  function editCourse(i) {
+    const c = courses[i];
+    document.getElementById(`ccode-${i}`).outerHTML=`<input class="item-code ci" id="ecc-${i}" value="${esc(c.code)}" style="width:60px;padding:4px 6px;border:1.5px solid var(--green-light);border-radius:6px;font-family:monospace;font-size:12px">`;
+    const nameEl = document.getElementById(`cname-${i}`);
+    nameEl.classList.add('editing');
+    nameEl.innerHTML=`<input id="ecn-${i}" value="${esc(c.name)}" style="flex:1;padding:5px 8px;border:1.5px solid var(--green-light);border-radius:6px;font-size:13px;font-family:inherit">`;
+    const editBtn = nameEl.nextElementSibling;
+    editBtn.textContent='保存'; editBtn.className='btn-save'; editBtn.onclick=()=>saveCourse(i);
+  }
+
+  async function saveCourse(i) {
+    const code = document.getElementById(`ecc-${i}`).value.trim();
+    const name = document.getElementById(`ecn-${i}`).value.trim();
+    if (!code||!name) { alert('入力してください'); return; }
+    const oldCode = courses[i].code;
+    courses[i] = {code,name};
+    // マッピングのコースコードも更新
+    mappings = mappings.map(m=>m.courseCode===oldCode?{...m,courseCode:code}:m);
+    renderCourses(); renderMappingCourseBar();
+    await post('saveCourses',{rows:courses});
+    await post('saveMappings',{rows:mappings});
+    showBanner('保存しました ✓');
+  }
+
+  async function delCourse(i) {
+    if (!confirm(`「${courses[i].code} ${courses[i].name}」を削除しますか？`)) return;
+    const code = courses[i].code;
+    courses.splice(i,1);
+    mappings = mappings.filter(m=>m.courseCode!==code);
+    renderCourses(); renderMappingCourseBar();
+    await post('saveCourses',{rows:courses});
+    await post('saveMappings',{rows:mappings});
+    showBanner('保存しました ✓');
+  }
+
+  // =====================
+  // 物件管理
+  // =====================
+  function renderProperties() {
+    document.getElementById('propCount').textContent = `全${properties.length}件`;
+    const el = document.getElementById('propList');
+    if (!properties.length) { el.innerHTML=`<div class="empty">物件がありません</div>`; return; }
+    el.innerHTML = `<div class="list-box">${properties.map((p,i)=>`
+      <div class="list-item">
+        <div class="item-code" id="pcode-${i}">${esc(p.code)}</div>
+        <div class="item-name" id="pname-${i}">${esc(p.name)}</div>
+        <button class="btn-edit" onclick="editProperty(${i})">編集</button>
+        <button class="btn-del" onclick="delProperty(${i})">✕</button>
+      </div>`).join('')}</div>`;
+    // 次の物件コードを自動入力
+    const maxCode = properties.reduce((m,p)=>Math.max(m,parseInt(p.code)||0),0);
+    document.getElementById('newPropCode').value = String(maxCode+1);
   }
 
   async function addProperty() {
     const code = document.getElementById('newPropCode').value.trim();
     const name = document.getElementById('newPropName').value.trim();
-    if (!code) { alert('物件コードを入力してください'); return; }
-    if (!name) { alert('物件名を入力してください'); return; }
-    const props = courses[currentIdx].properties;
-    if (props.find(p => p.code === code)) { alert('同じコードがすでにあります'); return; }
-    props.push({ code, name });
-    renderCourseDetail();
-    await saveToServer();
+    if (!code||!name) { alert('コードと名前を入力してください'); return; }
+    if (properties.find(p=>p.code===code)) { alert('同じコードがすでにあります'); return; }
+    properties.push({code,name});
+    document.getElementById('newPropName').value='';
+    renderProperties();
+    await post('saveProperties',{rows:properties}); showBanner('保存しました ✓');
   }
 
-  async function deleteProp(i) {
-    const p = courses[currentIdx].properties[i];
-    if (!confirm(`「${p.code} ${p.name}」を削除しますか？`)) return;
-    courses[currentIdx].properties.splice(i, 1);
-    renderCourseDetail();
-    await saveToServer();
+  function editProperty(i) {
+    const p = properties[i];
+    document.getElementById(`pcode-${i}`).outerHTML=`<input class="item-code" id="epc-${i}" value="${esc(p.code)}" style="width:60px;padding:4px 6px;border:1.5px solid var(--green-light);border-radius:6px;font-family:monospace;font-size:12px">`;
+    const nameEl = document.getElementById(`pname-${i}`);
+    nameEl.classList.add('editing');
+    nameEl.innerHTML=`<input id="epn-${i}" value="${esc(p.name)}" style="flex:1;padding:5px 8px;border:1.5px solid var(--green-light);border-radius:6px;font-size:13px;font-family:inherit">`;
+    const editBtn = nameEl.nextElementSibling;
+    editBtn.textContent='保存'; editBtn.className='btn-save'; editBtn.onclick=()=>saveProperty(i);
   }
 
-  function startEditProp(i) {
-    const p = courses[currentIdx].properties[i];
-    const codeCell = document.getElementById(`pcode-${i}`);
-    const nameCell = document.getElementById(`pname-${i}`);
-    codeCell.outerHTML = `<div class="prop-name-cell editing" id="pedit-wrap-${i}">
-      <input class="code-edit" id="pedit-code-${i}" value="${esc(p.code)}" maxlength="20" style="max-width:80px;font-family:monospace">
-      <input id="pedit-name-${i}" value="${esc(p.name)}" maxlength="50">
-    </div>`;
-    nameCell.style.display = 'none';
-    document.getElementById(`pname-${i}`).style.display = 'none';
-    const editBtn = document.querySelector(`#pitem-${i} .btn-edit`);
-    editBtn.textContent = '保存';
-    editBtn.className = 'btn-save';
-    editBtn.onclick = () => saveEditProp(i);
-    document.getElementById(`pedit-name-${i}`).focus();
+  async function saveProperty(i) {
+    const code = document.getElementById(`epc-${i}`).value.trim();
+    const name = document.getElementById(`epn-${i}`).value.trim();
+    if (!code||!name) { alert('入力してください'); return; }
+    const oldCode = properties[i].code;
+    properties[i] = {code,name};
+    mappings = mappings.map(m=>m.propertyCode===oldCode?{...m,propertyCode:code}:m);
+    renderProperties();
+    await post('saveProperties',{rows:properties});
+    await post('saveMappings',{rows:mappings});
+    showBanner('保存しました ✓');
   }
 
-  async function saveEditProp(i) {
-    const code = document.getElementById(`pedit-code-${i}`).value.trim();
-    const name = document.getElementById(`pedit-name-${i}`).value.trim();
-    if (!code) { alert('物件コードを入力してください'); return; }
-    if (!name) { alert('物件名を入力してください'); return; }
-    courses[currentIdx].properties[i] = { code, name };
-    renderCourseDetail();
-    await saveToServer();
+  async function delProperty(i) {
+    if (!confirm(`「${properties[i].code} ${properties[i].name}」を削除しますか？`)) return;
+    const code = properties[i].code;
+    properties.splice(i,1);
+    mappings = mappings.filter(m=>m.propertyCode!==code);
+    renderProperties();
+    await post('saveProperties',{rows:properties});
+    await post('saveMappings',{rows:mappings});
+    showBanner('保存しました ✓');
+  }
+
+  // =====================
+  // コース物件紐付け（2カラム・↑↓並び替え）
+  // =====================
+
+  // 現在のコースの紐付き物件（順序付き）
+  let linkedProps = []; // [{code,name}]
+
+  function renderMappingCourseBar() {
+    const bar = document.getElementById('courseSelectBar');
+    if (!courses.length) { bar.innerHTML='<div class="empty">コースがありません</div>'; return; }
+    bar.innerHTML = courses.map(c=>
+      `<button class="cs-btn ${currentMappingCourse===c.code?'active':''}" onclick="selectMappingCourse('${esc(c.code)}')">${esc(c.code)} ${esc(c.name)}</button>`
+    ).join('');
+    if (currentMappingCourse) renderMappingCols();
+  }
+
+  function selectMappingCourse(code) {
+    currentMappingCourse = code;
+    // mappingsから順序通りに紐付き物件を復元
+    const linked = mappings
+      .filter(m=>m.courseCode===code)
+      .map(m=>properties.find(p=>p.code===m.propertyCode))
+      .filter(Boolean);
+    linkedProps = linked;
+    renderMappingCourseBar();
+    renderMappingCols();
+  }
+
+  function renderMappingCols() {
+    const c = courses.find(c=>c.code===currentMappingCourse);
+    if (!c) return;
+
+    // 紐付き物件コードのセット
+    const linkedCodes = new Set(linkedProps.map(p=>p.code));
+
+    // タイトル更新
+    document.getElementById('linkedTitle').textContent = `${c.code} ${c.name}（${linkedProps.length}件）`;
+
+    // 左カラム：未紐付けの物件
+    const unlinked = properties.filter(p=>!linkedCodes.has(p.code));
+    document.getElementById('unlinkedCount').textContent = `${unlinked.length}件`;
+    const uList = document.getElementById('unlinkedList');
+    if (!unlinked.length) {
+      uList.innerHTML = `<div class="empty-col">すべて紐付け済みです</div>`;
+    } else {
+      uList.innerHTML = unlinked.map(p=>`
+        <div class="map-item">
+          <span class="mc">${esc(p.code)}</span>
+          <span class="mn">${esc(p.name)}</span>
+          <button class="btn-add-prop" onclick="addToLinked('${esc(p.code)}')">＋</button>
+        </div>`).join('');
+    }
+
+    // 右カラム：紐付き物件（↑↓）
+    const lList = document.getElementById('linkedList');
+    if (!linkedProps.length) {
+      lList.innerHTML = `<div class="empty-col">＋ で物件を追加</div>`;
+    } else {
+      lList.innerHTML = linkedProps.map((p,i)=>`
+        <div class="map-item">
+          <span class="mc">${esc(p.code)}</span>
+          <span class="mn">${esc(p.name)}</span>
+          <button class="btn-move" onclick="moveLinked(${i},-1)" ${i===0?'disabled':''}>↑</button>
+          <button class="btn-move" onclick="moveLinked(${i},1)" ${i===linkedProps.length-1?'disabled':''}>↓</button>
+          <button class="btn-remove" onclick="removeFromLinked('${esc(p.code)}')">✕</button>
+        </div>`).join('');
+    }
+  }
+
+  function addToLinked(code) {
+    const p = properties.find(p=>p.code===code);
+    if (!p) return;
+    linkedProps.push(p);
+    renderMappingCols();
+  }
+
+  function removeFromLinked(code) {
+    linkedProps = linkedProps.filter(p=>p.code!==code);
+    renderMappingCols();
+  }
+
+  function moveLinked(i, dir) {
+    const j = i + dir;
+    if (j < 0 || j >= linkedProps.length) return;
+    [linkedProps[i], linkedProps[j]] = [linkedProps[j], linkedProps[i]];
+    renderMappingCols();
+  }
+
+  async function saveMapping() {
+    if (!currentMappingCourse) { alert('コースを選択してください'); return; }
+    // 現在のコースのマッピングを順序通りに更新
+    mappings = mappings.filter(m=>m.courseCode!==currentMappingCourse);
+    linkedProps.forEach(p=>mappings.push({courseCode:currentMappingCourse, propertyCode:p.code}));
+    await post('saveMappings',{rows:mappings});
+    showBanner('保存しました ✓');
   }
 
   function esc(str) {
     return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
-  loadFromServer();
+  loadAll();
 </script>
 </body>
 </html>

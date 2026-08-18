@@ -143,7 +143,7 @@
 </div>
 
 <script>
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbz5GbL0veircw-C0PigdLC7Avj99y3_-6FL51os0ZYreGHWM-l2hmPpfaJEiWvt0SHaoA/exec';
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbyc9QDqV-d5rt4TUZDd9U-0KXnGv74t2TEx67EetVQiCEnNdvsZEUaLtH9FyjiHI-U_BA/exec';
   let allRecords = [];
 
   // コースリスト読み込み（GASから取得）
@@ -209,11 +209,11 @@
       return `
         <div class="record-card ${hasNotes ? 'has-notes' : ''}" onclick="openModal(${allRecords.indexOf(r)})">
           <div class="card-top">
-            <div class="card-property">${esc(r['物件名'] || '—')}${r['物件コード'] ? ` <span style="font-size:11px;color:var(--muted);font-weight:400">(${esc(r['物件コード'])})</span>` : ''}</div>
+            <div class="card-property">${esc(r['物件名'] || '—')}</div>
             <div class="card-date">${esc(date)}</div>
           </div>
           <div class="card-meta">
-            <span class="tag">${r['コースコード'] ? esc(r['コースコード'])+' ' : ''}${esc(r['コース'] || '—')}</span>
+            <span class="tag">${esc(r['コース'] || '—')}</span>
             <span class="tag tag-weather">${esc(r['天候'] || '—')}</span>
             <span class="tag tag-time">${esc(r['開始時刻'] || '')}〜${esc(r['終了時刻'] || '')}</span>
           </div>
@@ -226,8 +226,7 @@
     const r = allRecords[idx];
     document.getElementById('modalTitle').textContent = r['物件名'] || '詳細';
     const fields = [
-      ['コース', `${r['コースコード']||''} ${r['コース']||''}`.trim()],
-      ['物件コード', r['物件コード']],
+      ['コース', r['コース']],
       ['実施日', r['実施日']],
       ['天候', r['天候']],
       ['開始〜終了', `${r['開始時刻']}〜${r['終了時刻']}`],

@@ -461,12 +461,12 @@
     document.getElementById(fieldId).value = `${h}:${m}`;
   }
 
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbz5GbL0veircw-C0PigdLC7Avj99y3_-6FL51os0ZYreGHWM-l2hmPpfaJEiWvt0SHaoA/exec';
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbyc9QDqV-d5rt4TUZDd9U-0KXnGv74t2TEx67EetVQiCEnNdvsZEUaLtH9FyjiHI-U_BA/exec';
   let _courses = [];
 
   async function buildCourseSelect() {
     try {
-      const res = await fetch(GAS_URL + '?action=getCourses');
+      const res = await fetch(GAS_URL + '?action=getAll');
       _courses = await res.json();
     } catch(e) {
       _courses = [];
@@ -476,7 +476,7 @@
     _courses.forEach((c, i) => {
       const opt = document.createElement('option');
       opt.value = i;
-      opt.textContent = `${c.code}　${c.name}`;
+      opt.textContent = c.name;
       sel.appendChild(opt);
     });
   }
@@ -498,7 +498,7 @@
     props.forEach(p => {
       const opt = document.createElement('option');
       opt.value = JSON.stringify({ code: p.code, name: p.name });
-      opt.textContent = `${p.code}　${p.name}`;
+      opt.textContent = p.name;
       propSel.appendChild(opt);
     });
     propSel.disabled = false;
@@ -554,7 +554,7 @@
     const courseName = courses[courseVal] ? courses[courseVal].name : '';
     const courseCode = courses[courseVal] ? courses[courseVal].code : '';
 
-    const GAS_URL = 'https://script.google.com/macros/s/AKfycbz5GbL0veircw-C0PigdLC7Avj99y3_-6FL51os0ZYreGHWM-l2hmPpfaJEiWvt0SHaoA/exec';
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbyc9QDqV-d5rt4TUZDd9U-0KXnGv74t2TEx67EetVQiCEnNdvsZEUaLtH9FyjiHI-U_BA/exec';
 
     fetch(GAS_URL, {
       method: 'POST',
@@ -564,7 +564,7 @@
     })
     .then(() => {
       const d = new Date(date);
-      const detail = `${courseCode} ${courseName}　${propertyCode} ${property}\n${d.getMonth()+1}/${d.getDate()}（${weather}）　${start}〜${end}`;
+      const detail = `${courseName}　${property}\n${d.getMonth()+1}/${d.getDate()}（${weather}）　${start}〜${end}`;
       document.getElementById('successDetail').textContent = detail;
       document.getElementById('formArea').style.display = 'none';
       document.getElementById('successArea').style.display = 'block';
