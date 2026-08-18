@@ -126,7 +126,7 @@
     const withNotes=records.filter(r=>r.notes&&r.notes.trim()).length;
     const avgMin=Math.round(totalMin/records.length);
     const propSet=new Set(records.map(r=>r.property_code));
-    const courseStat={}, propStat={}, weatherStat={'晴':0,'曇':0,'雨':0,'雪':0};
+    const courseStat={}, propStat={}, weatherStat={'晴':0,'曇':0,'雨':0,'雪':0}, staffStat={};
     records.forEach(r=>{
       const ck=r.course_name||'不明';
       if (!courseStat[ck]) courseStat[ck]={code:r.course_code||'',count:0,notes:0,min:0};
@@ -136,6 +136,9 @@
       if (!propStat[pk]) propStat[pk]={code:r.property_code||'',count:0,notes:0,course:r.course_name||'',courseCode:r.course_code||''};
       propStat[pk].count++; if(r.notes&&r.notes.trim()) propStat[pk].notes++;
       if(r.weather&&weatherStat[r.weather]!==undefined) weatherStat[r.weather]++;
+      const sk=r.staff_name||'不明';
+      if(!staffStat[sk]) staffStat[sk]={count:0,notes:0};
+      staffStat[sk].count++; if(r.notes&&r.notes.trim()) staffStat[sk].notes++;
     });
     const maxC=Math.max(...Object.values(courseStat).map(v=>v.count));
     const maxP=Math.max(...Object.values(propStat).map(v=>v.count));
@@ -159,6 +162,7 @@
         <button class="tab-btn ${currentTab==='course'?'active':''}" onclick="switchTab('course')">コース別</button>
         <button class="tab-btn ${currentTab==='property'?'active':''}" onclick="switchTab('property')">物件別</button>
         <button class="tab-btn ${currentTab==='weather'?'active':''}" onclick="switchTab('weather')">天候</button>
+        <button class="tab-btn ${currentTab==='staff'?'active':''}" onclick="switchTab('staff')">入力者別</button>
       </div>
       <div id="tab-course" style="display:${currentTab==='course'?'block':'none'}">
         <div class="section"><div class="section-header">コース別 清掃回数</div>
@@ -167,6 +171,16 @@
       <div id="tab-property" style="display:${currentTab==='property'?'block':'none'}">
         <div class="section"><div class="section-header">物件別 清掃回数</div>
         <div class="table-wrap"><table><thead><tr><th>物件名</th><th>回数</th><th></th><th>特記</th></tr></thead><tbody>${propRows}</tbody></table></div></div>
+      </div>
+      <div id="tab-staff" style="display:${currentTab==='staff'?'block':'none'}">
+        <div class="section"><div class="section-header">入力者別 清掃回数</div>
+        <div class="table-wrap"><table><thead><tr><th>入力者</th><th>回数</th><th></th><th>特記</th></tr></thead><tbody>
+        ${Object.entries(staffStat).sort((a,b)=>b[1].count-a[1].count).map(([name,v])=>`
+          <tr><td>${esc(name)}</td>
+          <td><div class="bar-wrap"><div class="bar" style="width:${Math.round(v.count/Math.max(...Object.values(staffStat).map(v=>v.count))*120)}px"></div></div></td>
+          <td class="num-cell">${v.count}回</td>
+          <td class="num-cell orange">${v.notes>0?v.notes+'件':'—'}</td></tr>`).join('')}
+        </tbody></table></div></div>
       </div>
       <div id="tab-weather" style="display:${currentTab==='weather'?'block':'none'}">
         <div class="section"><div class="section-header">天候別 清掃回数</div>
@@ -181,10 +195,10 @@
 
   function switchTab(tab) {
     currentTab=tab;
-    ['course','property','weather'].forEach((t,i)=>{
+    ['course','property','weather','staff'].forEach((t,i)=>{
       const el=document.getElementById('tab-'+t); if(el) el.style.display=t===tab?'block':'none';
     });
-    document.querySelectorAll('.tab-btn').forEach((btn,i)=>btn.classList.toggle('active',['course','property','weather'][i]===tab));
+    document.querySelectorAll('.tab-btn').forEach((btn,i)=>btn.classList.toggle('active',['course','property','weather','staff'][i]===tab));
   }
 
   function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }

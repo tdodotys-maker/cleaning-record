@@ -86,6 +86,15 @@
     <div class="section">
       <div class="section-header">📋 基本情報</div>
       <div class="field">
+        <label>入力者<span class="req">*</span></label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="text" id="staffName" placeholder="氏名を入力" style="flex:1">
+          <button type="button" onclick="saveStaffName()" style="padding:10px 14px;background:var(--green-pale);border:1.5px solid var(--green-light);border-radius:8px;color:var(--green);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">記憶</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">「記憶」を押すとこの端末に保存されます</div>
+      </div>
+
+      <div class="field">
         <label>コース<span class="req">*</span></label>
         <select id="courseName" onchange="onCourseChange()">
           <option value="">読み込み中…</option>
@@ -284,6 +293,8 @@
     const start = document.getElementById('startTime').value;
     const end = document.getElementById('endTime').value;
 
+    const staffName = document.getElementById('staffName').value.trim();
+    if (!staffName) { alert('入力者を入力してください'); return; }
     if (!courseIdx) { alert('コースを選択してください'); return; }
     if (!propRaw) { alert('物件名を選択してください'); return; }
     if (!date) { alert('実施日を入力してください'); return; }
@@ -303,6 +314,7 @@
     btn.disabled = true;
 
     const ok = await sbInsert('cleaning_records', {
+      staff_name: staffName,
       course_code: course.code,
       course_name: course.name,
       property_code: propertyCode,
@@ -319,7 +331,7 @@
     if (ok) {
       // 特記事項があればメール通知（GAS経由）
       if (notes && notes.trim()) {
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbzRiZYBMT9WsAiL5BNxPM_xf-dTe0oM43Jk7zs7qfo8RVrkjbAIe9sMdqGt4VrY2sUNSg/exec';
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbzdI8YT_zrDKzgTV_FqmCxdZn5TdwVHXLMAUcgjvIZ2_boKVdhPEafBjf_8LslMHOXn/exec';
         const _data = encodeURIComponent(JSON.stringify({
           action:'sendMail', courseCode:course.code, course:course.name,
           propertyCode, property:propertyName, date, weather, start, end, notes
@@ -354,6 +366,17 @@
     document.getElementById('successArea').style.display = 'none';
     window.scrollTo(0,0);
   }
+
+  function saveStaffName() {
+    const name = document.getElementById('staffName').value.trim();
+    if (!name) { alert('氏名を入力してください'); return; }
+    localStorage.setItem('staff_name', name);
+    alert(`「${name}」を記憶しました`);
+  }
+
+  // 端末に保存された入力者名を読み込む
+  const savedStaff = localStorage.getItem('staff_name');
+  if (savedStaff) document.getElementById('staffName').value = savedStaff;
 
   buildCourseSelect();
 </script>
