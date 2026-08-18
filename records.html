@@ -49,6 +49,26 @@
   .modal-val { font-size:14px; flex:1; line-height:1.6; }
   .modal-notes { background:#fffbf0; border-radius:8px; padding:10px 12px; border-left:3px solid #f39c12; font-size:14px; line-height:1.6; }
   .empty { text-align:center; padding:40px 20px; color:var(--muted); font-size:14px; }
+  .modal-edit input[type=text],.modal-edit input[type=date],.modal-edit input[type=time],.modal-edit select,.modal-edit textarea {
+    width:100%; padding:8px 10px; border:1.5px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit; background:var(--white); appearance:none; -webkit-appearance:none;
+  }
+  .modal-edit input:focus,.modal-edit select:focus,.modal-edit textarea:focus { outline:none; border-color:var(--green-light); }
+  .modal-edit select { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7c6e' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; padding-right:30px; }
+  .modal-edit textarea { resize:vertical; min-height:80px; }
+  .modal-edit .check-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:4px; }
+  .modal-edit .check-item { display:flex; align-items:center; gap:6px; padding:7px 8px; border:1.5px solid var(--border); border-radius:7px; cursor:pointer; font-size:13px; }
+  .modal-edit .check-item input { width:16px; height:16px; accent-color:var(--green); flex-shrink:0; }
+  .modal-edit .check-item:has(input:checked) { background:var(--green-pale); border-color:var(--green-light); }
+  .modal-btn-row { display:flex; gap:8px; margin-top:16px; }
+  .btn-update { flex:1; padding:12px; background:var(--green); color:white; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; }
+  .btn-update:active { opacity:.8; }
+  .btn-delete { padding:12px 16px; background:var(--red-pale,#fde8e8); color:var(--red); border:1.5px solid #f5c6c6; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; }
+  .modal-tabs { display:flex; gap:0; margin-bottom:16px; border-radius:8px; overflow:hidden; border:1.5px solid var(--border); }
+  .modal-tab { flex:1; padding:9px; text-align:center; font-size:13px; font-weight:700; cursor:pointer; background:var(--white); color:var(--muted); border:none; }
+  .modal-tab.active { background:var(--green); color:white; }
+  .weather-group { display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; }
+  .weather-btn { padding:7px 12px; border:1.5px solid var(--border); border-radius:20px; background:var(--white); font-size:13px; cursor:pointer; }
+  .weather-btn.active { background:var(--green); border-color:var(--green); color:white; }
 </style>
 </head>
 <body>
@@ -66,10 +86,6 @@
     <div class="filter-row"><input type="text" id="searchText" placeholder="🔍 物件名・特記事項で検索" oninput="applyFilter()"></div>
     <div class="filter-row">
       <select id="filterCourse" onchange="applyFilter()"><option value="">すべてのコース</option></select>
-      <select id="filterWeather" onchange="applyFilter()">
-        <option value="">すべての天候</option>
-        <option>晴</option><option>曇</option><option>雨</option><option>雪</option>
-      </select>
     </div>
     <div class="filter-row">
       <input type="date" id="filterDateFrom" onchange="applyFilter()">
@@ -87,7 +103,12 @@
 <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
   <div class="modal">
     <div class="modal-header"><h2 id="modalTitle"></h2><button class="btn-close" onclick="closeModalDirect()">✕</button></div>
+    <div class="modal-tabs">
+      <button class="modal-tab active" onclick="switchModalTab('view',this)">詳細</button>
+      <button class="modal-tab" onclick="switchModalTab('edit',this)">編集</button>
+    </div>
     <div id="modalBody"></div>
+    <div id="modalEdit" style="display:none"></div>
   </div>
 </div>
 <script>
@@ -116,13 +137,11 @@
   function applyFilter() {
     const q = document.getElementById('searchText').value.trim().toLowerCase();
     const course = document.getElementById('filterCourse').value;
-    const weather = document.getElementById('filterWeather').value;
     const from = document.getElementById('filterDateFrom').value;
     const to = document.getElementById('filterDateTo').value;
     const filtered = allRecords.filter(r => {
       if (q && !((r.property_name||'').toLowerCase().includes(q)||(r.notes||'').toLowerCase().includes(q))) return false;
       if (course && r.course_name !== course) return false;
-      if (weather && r.weather !== weather) return false;
       if (from && r.cleaning_date < from) return false;
       if (to && r.cleaning_date > to) return false;
       return true;
@@ -151,15 +170,30 @@
     }).join('')}</div>`;
   }
 
+  let currentModalIdx = -1;
+  const CHECK_ITEMS = ['入口周り','ポスト・掲示板','通路','階段・手すり','各玄関ドア・機器','消火器','天井・クモの巣','照明','ゴミボックス','駐輪場・ポール','駐車場','植栽','水路'];
+  const SPECIAL_ITEMS = ['クモの巣多し','除草剤散布','落ち葉多し','階段拭き','照明（球切れ等）'];
+
   function openModal(idx) {
+    currentModalIdx = idx;
     const r = allRecords[idx];
     document.getElementById('modalTitle').textContent = r.property_name||'詳細';
+    renderModalView(r);
+    // タブをリセット
+    document.querySelectorAll('.modal-tab').forEach((t,i)=>t.classList.toggle('active',i===0));
+    document.getElementById('modalBody').style.display='block';
+    document.getElementById('modalEdit').style.display='none';
+    document.getElementById('modalOverlay').classList.add('show');
+    document.body.style.overflow='hidden';
+  }
+
+  function renderModalView(r) {
     const fields = [
       ['コース', `${r.course_code||''} ${r.course_name||'—'}`],
       ['物件コード', r.property_code],
       ['実施日', r.cleaning_date],
       ['天候', r.weather],
-      ['開始〜終了', `${r.start_time}〜${r.end_time}`],
+      ['開始〜終了', `${r.start_time||''}〜${r.end_time||''}`],
       ['清掃項目', r.check_items],
       ['追加対応', r.special_items],
     ];
@@ -168,16 +202,124 @@
     const sent = r.created_at ? new Date(r.created_at).toLocaleString('ja-JP') : '—';
     html+=`<div class="modal-row"><div class="modal-label">送信日時</div><div class="modal-val" style="font-size:12px;color:var(--muted)">${sent}</div></div>`;
     document.getElementById('modalBody').innerHTML=html;
-    document.getElementById('modalOverlay').classList.add('show');
-    document.body.style.overflow='hidden';
   }
+
+  function renderModalEdit(r) {
+    const checkedItems = (r.check_items||'').split('／').filter(Boolean);
+    const checkedSpecials = (r.special_items||'').split('／').filter(Boolean);
+    const html = `<div class="modal-edit">
+      <div class="modal-row"><div class="modal-label">実施日</div>
+        <div class="modal-val"><input type="date" id="edit_date" value="${esc(r.cleaning_date||'')}"></div></div>
+      <div class="modal-row"><div class="modal-label">天候</div>
+        <div class="modal-val">
+          <div class="weather-group" id="edit_weather_group">
+            ${['☀️ 晴','☁️ 曇','🌧️ 雨','❄️ 雪'].map(w=>{const v=w.split(' ')[1]; return `<button type="button" class="weather-btn ${r.weather===v?'active':''}" onclick="setEditWeather('${v}',this)">${w}</button>`;}).join('')}
+          </div>
+          <input type="hidden" id="edit_weather" value="${esc(r.weather||'')}">
+        </div></div>
+      <div class="modal-row"><div class="modal-label">開始時刻</div>
+        <div class="modal-val"><input type="time" id="edit_start" value="${esc(r.start_time||'')}"></div></div>
+      <div class="modal-row"><div class="modal-label">終了時刻</div>
+        <div class="modal-val"><input type="time" id="edit_end" value="${esc(r.end_time||'')}"></div></div>
+      <div class="modal-row"><div class="modal-label">清掃項目</div>
+        <div class="modal-val"><div class="check-grid">
+          ${CHECK_ITEMS.map(item=>`<label class="check-item"><input type="checkbox" name="edit_check" value="${esc(item)}" ${checkedItems.includes(item)?'checked':''}><span>${esc(item)}</span></label>`).join('')}
+        </div></div></div>
+      <div class="modal-row"><div class="modal-label">追加対応</div>
+        <div class="modal-val"><div class="check-grid">
+          ${SPECIAL_ITEMS.map(item=>`<label class="check-item"><input type="checkbox" name="edit_special" value="${esc(item)}" ${checkedSpecials.includes(item)?'checked':''}><span>${esc(item)}</span></label>`).join('')}
+        </div></div></div>
+      <div class="modal-row"><div class="modal-label">特記事項</div>
+        <div class="modal-val"><textarea id="edit_notes">${esc(r.notes||'')}</textarea></div></div>
+      <div class="modal-btn-row">
+        <button class="btn-update" onclick="updateRecord()">更新する</button>
+        <button class="btn-delete" onclick="deleteRecord()">削除</button>
+      </div>
+    </div>`;
+    document.getElementById('modalEdit').innerHTML=html;
+  }
+
+  function setEditWeather(val, btn) {
+    document.querySelectorAll('#edit_weather_group .weather-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('edit_weather').value=val;
+  }
+
+  function switchModalTab(tab, el) {
+    document.querySelectorAll('.modal-tab').forEach(t=>t.classList.remove('active'));
+    el.classList.add('active');
+    if (tab==='view') {
+      document.getElementById('modalBody').style.display='block';
+      document.getElementById('modalEdit').style.display='none';
+    } else {
+      document.getElementById('modalBody').style.display='none';
+      document.getElementById('modalEdit').style.display='block';
+      renderModalEdit(allRecords[currentModalIdx]);
+    }
+  }
+
+  async function updateRecord() {
+    const r = allRecords[currentModalIdx];
+    const date = document.getElementById('edit_date').value;
+    const weather = document.getElementById('edit_weather').value;
+    const start = document.getElementById('edit_start').value;
+    const end = document.getElementById('edit_end').value;
+    const notes = document.getElementById('edit_notes').value;
+    const checks = [...document.querySelectorAll('input[name="edit_check"]:checked')].map(c=>c.value);
+    const specials = [...document.querySelectorAll('input[name="edit_special"]:checked')].map(c=>c.value);
+    if (!date||!weather||!start||!end) { alert('実施日・天候・時刻は必須です'); return; }
+    const btn = document.querySelector('.btn-update');
+    btn.textContent='更新中…'; btn.disabled=true;
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/cleaning_records?id=eq.${r.id}`, {
+      method:'PATCH',
+      headers:{...SB_H,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body: JSON.stringify({ cleaning_date:date, weather, start_time:start, end_time:end, check_items:checks.join('／'), special_items:specials.join('／'), notes })
+    });
+    btn.textContent='更新する'; btn.disabled=false;
+    if (res.ok) {
+      // ローカルデータも更新
+      allRecords[currentModalIdx] = { ...r, cleaning_date:date, weather, start_time:start, end_time:end, check_items:checks.join('／'), special_items:specials.join('／'), notes };
+      renderModalView(allRecords[currentModalIdx]);
+      document.querySelectorAll('.modal-tab')[0].click();
+      applyFilter();
+      alert('更新しました');
+    } else {
+      alert('更新に失敗しました');
+    }
+  }
+
+  async function deleteRecord() {
+    const r = allRecords[currentModalIdx];
+    if (!confirm(`「${r.property_name}」${r.cleaning_date}の記録を削除しますか？`)) return;
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/cleaning_records?id=eq.${r.id}`, {
+      method:'DELETE', headers:SB_H
+    });
+    if (res.ok) {
+      allRecords.splice(currentModalIdx,1);
+      closeModalDirect();
+      applyFilter();
+    } else {
+      alert('削除に失敗しました');
+    }
+  }
+
   function closeModal(e) { if(e.target===document.getElementById('modalOverlay')) closeModalDirect(); }
   function closeModalDirect() { document.getElementById('modalOverlay').classList.remove('show'); document.body.style.overflow=''; }
   function resetFilter() {
-    ['searchText','filterCourse','filterWeather','filterDateFrom','filterDateTo'].forEach(id=>document.getElementById(id).value='');
+    ['searchText','filterCourse','filterDateFrom','filterDateTo'].forEach(id=>document.getElementById(id).value='');
+    initDateFilter();
     applyFilter();
   }
   function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function initDateFilter() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth()+1).padStart(2,'0');
+    document.getElementById('filterDateFrom').value = `${y}-${m}-01`;
+    document.getElementById('filterDateTo').value = now.toISOString().split('T')[0];
+  }
+
+  initDateFilter();
   loadRecords();
 </script>
 </body>
