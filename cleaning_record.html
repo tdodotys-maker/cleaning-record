@@ -433,7 +433,7 @@
       renderPhotoPreview();
       // 特記事項があればメール通知（GAS経由）
       if (notes && notes.trim()) {
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbzdI8YT_zrDKzgTV_FqmCxdZn5TdwVHXLMAUcgjvIZ2_boKVdhPEafBjf_8LslMHOXn/exec';
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbyxfQLeZuRGy-ArrBy5-kbdDXd44YZ5YZJ4L6wWyZ84-Bpc5k10PpJKp0292G5fx8J-2w/exec';
         const _data = encodeURIComponent(JSON.stringify({
           action:'sendMail', courseCode:course.code, course:course.name,
           propertyCode, property:propertyName, date, weather, start, end, notes
