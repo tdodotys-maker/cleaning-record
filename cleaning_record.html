@@ -63,6 +63,13 @@
   .success p { color:var(--muted); font-size:14px; margin-bottom:24px; white-space:pre-line; }
   .btn-back { padding:12px 32px; background:var(--white); border:2px solid var(--green); color:var(--green); border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; }
   select:disabled { background-color:#f5f5f5; color:var(--muted); }
+  .monthly-item { display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid #f0f4f0; font-size:13px; }
+  .monthly-item:last-child { border-bottom:none; }
+  .monthly-date { font-size:12px; color:var(--muted); flex-shrink:0; width:44px; }
+  .monthly-prop { flex:1; font-weight:600; }
+  .monthly-course { font-size:11px; color:var(--muted); }
+  .monthly-staff { font-size:11px; background:#f0e6ff; color:#6c3483; padding:2px 7px; border-radius:10px; flex-shrink:0; }
+  .monthly-notes { font-size:11px; color:var(--orange,#e67e22); flex-shrink:0; }
 </style>
 </head>
 <body>
@@ -102,7 +109,7 @@
       </div>
       <div class="field">
         <label>物件名<span class="req">*</span></label>
-        <select id="propertyName" disabled>
+        <select id="propertyName" disabled onchange="onPropertyChange()">
           <option value="">まずコースを選択してください</option>
         </select>
       </div>
@@ -177,6 +184,18 @@
 
     <div class="submit-area">
       <button class="btn-submit" onclick="submitForm()">記録を送信する</button>
+    </div>
+  </div>
+
+  <!-- 当月実施記録 -->
+  <div class="section" id="monthlySection" style="margin-bottom:14px">
+    <div class="section-header" style="display:flex;justify-content:space-between;align-items:center">
+      <span id="monthlyTitle">📅 当月の実施記録</span>
+      <span id="monthlyPropName" style="font-size:12px;color:var(--green);font-weight:700"></span>
+      <span id="monthlyCount" style="font-size:12px;font-weight:400"></span>
+    </div>
+    <div id="monthlyList" style="padding:8px 0">
+      <div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">物件を選択すると表示されます</div>
     </div>
   </div>
 
@@ -272,6 +291,9 @@
     if (idx === '') {
       propSel.innerHTML = '<option value="">まずコースを選択してください</option>';
       propSel.disabled = true;
+      document.getElementById('monthlyList').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">物件を選択すると表示されます</div>';
+      document.getElementById('monthlyCount').textContent = '';
+      document.getElementById('monthlyPropName').textContent = '';
       return;
     }
     const props = _courses[idx].properties;
@@ -379,6 +401,64 @@
   if (savedStaff) document.getElementById('staffName').value = savedStaff;
 
   buildCourseSelect();
+
+  function onPropertyChange() {
+    const propRaw = document.getElementById('propertyName').value;
+    if (!propRaw) {
+      document.getElementById('monthlyList').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">物件を選択すると表示されます</div>';
+      document.getElementById('monthlyCount').textContent = '';
+      document.getElementById('monthlyPropName').textContent = '';
+      return;
+    }
+    try {
+      const p = JSON.parse(propRaw);
+      loadMonthlyRecords(p.code, p.name);
+    } catch(e) {}
+  }
+
+  async function loadMonthlyRecords(propertyCode, propertyName) {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth()+1).padStart(2,'0');
+    const from = `${y}-${m}-01`;
+    const to = now.toISOString().split('T')[0];
+    const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+    document.getElementById('monthlyTitle').textContent = `📅 ${y}年${months[now.getMonth()]}`;
+    document.getElementById('monthlyPropName').textContent = propertyName || '';
+    document.getElementById('monthlyList').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">読み込み中…</div>';
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/cleaning_records?property_code=eq.${propertyCode}&cleaning_date=gte.${from}&cleaning_date=lte.${to}&order=cleaning_date.desc,created_at.desc`,
+        { headers: SB_HEADERS }
+      );
+      const records = await res.json();
+      document.getElementById('monthlyCount').textContent = `${records.length}件`;
+      const list = document.getElementById('monthlyList');
+      if (!records.length) {
+        list.innerHTML = `<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">今月の記録はありません</div>`;
+        return;
+      }
+      list.innerHTML = records.map(r => {
+        const d = r.cleaning_date ? r.cleaning_date.slice(5).replace('-','/') : '';
+        const hasNotes = r.notes && r.notes.trim();
+        return `<div class="monthly-item">
+          <div class="monthly-date">${d}</div>
+          <div style="flex:1;min-width:0">
+            <div class="monthly-prop">${esc(r.property_name||'—')}</div>
+            <div class="monthly-course">${esc(r.start_time||'')}〜${esc(r.end_time||'')}</div>
+          </div>
+          ${r.staff_name ? `<span class="monthly-staff">${esc(r.staff_name)}</span>` : ''}
+          ${hasNotes ? `<span class="monthly-notes">📝</span>` : ''}
+        </div>`;
+      }).join('');
+    } catch(e) {
+      document.getElementById('monthlyList').innerHTML = `<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">取得に失敗しました</div>`;
+    }
+  }
+
+  function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+
 </script>
 </body>
 </html>
