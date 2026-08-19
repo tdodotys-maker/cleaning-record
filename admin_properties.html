@@ -72,6 +72,16 @@
   @keyframes spin { to { transform:rotate(360deg); } }
   .save-banner { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--green); color:white; padding:11px 26px; border-radius:30px; font-size:14px; font-weight:700; box-shadow:0 4px 16px rgba(0,0,0,.2); opacity:0; transition:opacity .3s; pointer-events:none; white-space:nowrap; z-index:999; }
   .save-banner.show { opacity:1; }
+  .lock-overlay { display:flex; position:fixed; inset:0; background:var(--bg); z-index:500; flex-direction:column; align-items:center; justify-content:center; padding:24px; }
+  .lock-overlay .lock-icon { font-size:48px; margin-bottom:16px; }
+  .lock-overlay h2 { font-size:18px; font-weight:700; color:var(--green); margin-bottom:6px; }
+  .lock-overlay p { font-size:13px; color:var(--muted); margin-bottom:24px; }
+  .pin-input { display:flex; gap:10px; margin-bottom:16px; }
+  .pin-digit { width:52px; height:60px; border:2px solid var(--border); border-radius:10px; font-size:24px; text-align:center; font-family:monospace; background:var(--white); color:var(--text); }
+  .pin-digit:focus { outline:none; border-color:var(--green-light); box-shadow:0 0 0 3px rgba(82,183,136,.2); }
+  .pin-error { color:var(--red,#c0392b); font-size:13px; margin-bottom:12px; min-height:20px; }
+  .btn-unlock { padding:12px 40px; background:var(--green); color:white; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; }
+  .btn-unlock:active { opacity:.8; }
 </style>
 </head>
 <body>
@@ -84,6 +94,21 @@
     <a href="cleaning_record.html">🧹 入力</a>
   </div>
 </header>
+<!-- ロック画面 -->
+<div class="lock-overlay" id="lockOverlay">
+  <div class="lock-icon">🔐</div>
+  <h2>管理者専用</h2>
+  <p>PINを入力してください</p>
+  <div class="pin-input">
+    <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="p0" oninput="onPin(0)">
+    <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="p1" oninput="onPin(1)">
+    <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="p2" oninput="onPin(2)">
+    <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="p3" oninput="onPin(3)">
+  </div>
+  <div class="pin-error" id="pinError"></div>
+  <button class="btn-unlock" onclick="checkPin()">確認</button>
+</div>
+
 <div class="container">
   <div class="page-tabs">
     <button class="page-tab active" onclick="switchPage('course',this)">コース</button>
@@ -385,7 +410,47 @@
     return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
-  loadAll();
+  const PIN = '1121';
+  const SESSION_KEY = 'admin_unlocked';
+
+  function checkUnlocked() {
+    return sessionStorage.getItem(SESSION_KEY) === 'true';
+  }
+
+  function onPin(idx) {
+    const val = document.getElementById(`p${idx}`).value;
+    if (val && idx < 3) {
+      document.getElementById(`p${idx+1}`).focus();
+    }
+    if (idx === 3 && val) checkPin();
+  }
+
+  function checkPin() {
+    const pin = [0,1,2,3].map(i => document.getElementById(`p${i}`).value).join('');
+    if (pin === PIN) {
+      sessionStorage.setItem(SESSION_KEY, 'true');
+      document.getElementById('lockOverlay').style.display = 'none';
+      loadAll();
+    } else {
+      document.getElementById('pinError').textContent = 'PINが正しくありません';
+      [0,1,2,3].forEach(i => { document.getElementById(`p${i}`).value = ''; });
+      document.getElementById('p0').focus();
+      setTimeout(() => document.getElementById('pinError').textContent = '', 2000);
+    }
+  }
+
+  // Enterキー対応
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !checkUnlocked()) checkPin();
+  });
+
+  // 認証済みチェック
+  if (checkUnlocked()) {
+    document.getElementById('lockOverlay').style.display = 'none';
+    loadAll();
+  } else {
+    document.getElementById('p0').focus();
+  }
 </script>
 </body>
 </html>
