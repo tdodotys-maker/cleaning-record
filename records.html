@@ -49,6 +49,13 @@
   .modal-val { font-size:14px; flex:1; line-height:1.6; }
   .modal-notes { background:#fffbf0; border-radius:8px; padding:10px 12px; border-left:3px solid #f39c12; font-size:14px; line-height:1.6; }
   .empty { text-align:center; padding:40px 20px; color:var(--muted); font-size:14px; }
+  .photo-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:8px; }
+  .photo-thumb { aspect-ratio:1; border-radius:8px; overflow:hidden; background:#f0f0f0; cursor:pointer; }
+  .photo-thumb img { width:100%; height:100%; object-fit:cover; }
+  .photo-viewer { display:none; position:fixed; inset:0; background:rgba(0,0,0,.9); z-index:300; align-items:center; justify-content:center; }
+  .photo-viewer.show { display:flex; }
+  .photo-viewer img { max-width:95vw; max-height:90vh; object-fit:contain; border-radius:8px; }
+  .photo-viewer-close { position:absolute; top:16px; right:16px; background:none; border:none; color:white; font-size:30px; cursor:pointer; }
   .modal-edit input[type=text],.modal-edit input[type=date],.modal-edit input[type=time],.modal-edit select,.modal-edit textarea {
     width:100%; padding:8px 10px; border:1.5px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit; background:var(--white); appearance:none; -webkit-appearance:none;
   }
@@ -101,6 +108,12 @@
   </div>
   <div id="listArea"><div class="loading"><div class="spinner"></div><br>データを読み込み中…</div></div>
 </div>
+<!-- 写真ビューワー -->
+<div class="photo-viewer" id="photoViewer" onclick="closePhotoViewer()">
+  <button class="photo-viewer-close" onclick="closePhotoViewer()">✕</button>
+  <img id="photoViewerImg" src="">
+</div>
+
 <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
   <div class="modal">
     <div class="modal-header"><h2 id="modalTitle"></h2><button class="btn-close" onclick="closeModalDirect()">✕</button></div>
@@ -173,6 +186,7 @@
           <span class="tag tag-weather">${esc(r.weather||'—')}</span>
           <span class="tag tag-time">${esc(r.start_time||'')}〜${esc(r.end_time||'')}</span>
           ${r.staff_name?`<span class="tag" style="background:#f0e6ff;color:#6c3483">${esc(r.staff_name)}</span>`:''}
+          ${r.photo_urls&&JSON.parse(r.photo_urls||'[]').length?`<span class="tag" style="background:#e8f4fd;color:#2980b9">📷 ${JSON.parse(r.photo_urls).length}枚</span>`:''}
         </div>
         ${hasNotes?`<div class="card-notes">📝 ${esc(r.notes)}</div>`:''}
       </div>`;
@@ -209,6 +223,17 @@
     ];
     let html = fields.map(([l,v])=>`<div class="modal-row"><div class="modal-label">${l}</div><div class="modal-val">${esc(v||'—')}</div></div>`).join('');
     if (r.notes&&r.notes.trim()) html+=`<div class="modal-row"><div class="modal-label">特記事項</div><div class="modal-val"><div class="modal-notes">${esc(r.notes)}</div></div></div>`;
+    // 写真
+    if (r.photo_urls) {
+      try {
+        const urls = JSON.parse(r.photo_urls);
+        if (urls.length) {
+          html+=`<div class="modal-row"><div class="modal-label">写真</div><div class="modal-val">
+            <div class="photo-grid">${urls.map(url=>`<div class="photo-thumb" onclick="openPhotoViewer('${url}')"><img src="${url}" loading="lazy"></div>`).join('')}</div>
+          </div></div>`;
+        }
+      } catch(e) {}
+    }
     const sent = r.created_at ? new Date(r.created_at).toLocaleString('ja-JP') : '—';
     html+=`<div class="modal-row"><div class="modal-label">送信日時</div><div class="modal-val" style="font-size:12px;color:var(--muted)">${sent}</div></div>`;
     document.getElementById('modalBody').innerHTML=html;
@@ -319,6 +344,15 @@
     ['searchText','filterCourse','filterStaff','filterDateFrom','filterDateTo'].forEach(id=>document.getElementById(id).value='');
     initDateFilter();
     applyFilter();
+  }
+  function openPhotoViewer(url) {
+    document.getElementById('photoViewerImg').src = url;
+    document.getElementById('photoViewer').classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+  function closePhotoViewer() {
+    document.getElementById('photoViewer').classList.remove('show');
+    document.body.style.overflow = '';
   }
   function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function initDateFilter() {

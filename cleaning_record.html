@@ -63,6 +63,40 @@
   .success p { color:var(--muted); font-size:14px; margin-bottom:24px; white-space:pre-line; }
   .btn-back { padding:12px 32px; background:var(--white); border:2px solid var(--green); color:var(--green); border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; }
   select:disabled { background-color:#f5f5f5; color:var(--muted); }
+  .photo-area { padding:12px 16px; }
+  .photo-upload-btn { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:12px; border:2px dashed var(--border); border-radius:10px; background:var(--bg); color:var(--muted); font-size:14px; cursor:pointer; transition:all .15s; }
+  .photo-upload-btn:active { background:var(--green-pale); border-color:var(--green-light); }
+  .photo-preview-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:10px; }
+  .photo-thumb { position:relative; aspect-ratio:1; border-radius:8px; overflow:hidden; background:#f0f0f0; }
+  .photo-thumb img { width:100%; height:100%; object-fit:cover; }
+  .photo-thumb .del-btn { position:absolute; top:4px; right:4px; background:rgba(0,0,0,.55); color:white; border:none; border-radius:50%; width:22px; height:22px; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; }
+  .photo-progress { font-size:12px; color:var(--muted); text-align:center; margin-top:6px; }
+  .edit-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:200; align-items:flex-end; justify-content:center; }
+  .edit-modal-overlay.show { display:flex; }
+  .edit-modal { background:var(--white); border-radius:16px 16px 0 0; padding:20px 20px 40px; width:100%; max-width:600px; max-height:85vh; overflow-y:auto; }
+  .edit-modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+  .edit-modal-header h2 { font-size:16px; font-weight:700; }
+  .edit-modal .field { padding:10px 0; border-bottom:1px solid #f0f4f0; }
+  .edit-modal .field:last-child { border-bottom:none; }
+  .edit-modal label { display:block; font-size:12px; color:var(--muted); margin-bottom:5px; font-weight:600; }
+  .edit-modal input[type=date],.edit-modal input[type=time],.edit-modal textarea {
+    width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit;
+  }
+  .edit-modal input:focus,.edit-modal textarea:focus { outline:none; border-color:var(--green-light); }
+  .edit-modal textarea { resize:vertical; min-height:70px; }
+  .edit-modal .check-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:4px; }
+  .edit-modal .check-item { display:flex; align-items:center; gap:6px; padding:7px 8px; border:1.5px solid var(--border); border-radius:7px; cursor:pointer; font-size:13px; }
+  .edit-modal .check-item input { width:16px; height:16px; accent-color:var(--green); flex-shrink:0; }
+  .edit-modal .check-item:has(input:checked) { background:var(--green-pale); border-color:var(--green-light); }
+  .edit-modal .weather-group { display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; }
+  .edit-modal .weather-btn { padding:7px 12px; border:1.5px solid var(--border); border-radius:20px; background:var(--white); font-size:13px; cursor:pointer; }
+  .edit-modal .weather-btn.active { background:var(--green); border-color:var(--green); color:white; }
+  .edit-modal-btns { display:flex; gap:8px; margin-top:16px; }
+  .btn-edit-save { flex:1; padding:12px; background:var(--green); color:white; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; }
+  .btn-edit-del { padding:12px 16px; background:#fde8e8; color:var(--red); border:1.5px solid #f5c6c6; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; }
+  .monthly-item { cursor:pointer; transition:background .15s; }
+  .monthly-item:active { background:var(--green-pale); }
+  .edit-badge { font-size:10px; padding:2px 6px; background:var(--green-pale); color:var(--green); border-radius:6px; flex-shrink:0; }
   .monthly-item { display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid #f0f4f0; font-size:13px; }
   .monthly-item:last-child { border-bottom:none; }
   .monthly-date { font-size:12px; color:var(--muted); flex-shrink:0; width:44px; }
@@ -182,6 +216,18 @@
       </div>
     </div>
 
+    <div class="section">
+      <div class="section-header">📷 写真（任意）</div>
+      <div class="photo-area">
+        <label class="photo-upload-btn" for="photoInput">
+          📷 写真を選択（複数可）
+        </label>
+        <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="onPhotoSelect(event)">
+        <div class="photo-preview-grid" id="photoPreviewGrid"></div>
+        <div class="photo-progress" id="photoProgress"></div>
+      </div>
+    </div>
+
     <div class="submit-area">
       <button class="btn-submit" onclick="submitForm()">記録を送信する</button>
     </div>
@@ -196,6 +242,17 @@
     </div>
     <div id="monthlyList" style="padding:8px 0">
       <div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">物件を選択すると表示されます</div>
+    </div>
+  </div>
+
+  <!-- 編集モーダル -->
+  <div class="edit-modal-overlay" id="editModalOverlay" onclick="closeEditModal(event)">
+    <div class="edit-modal">
+      <div class="edit-modal-header">
+        <h2 id="editModalTitle">記録を修正</h2>
+        <button style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted)" onclick="closeEditModalDirect()">✕</button>
+      </div>
+      <div id="editModalBody"></div>
     </div>
   </div>
 
@@ -335,22 +392,44 @@
     btn.textContent = '送信中…';
     btn.disabled = true;
 
-    const ok = await sbInsert('cleaning_records', {
-      staff_name: staffName,
-      course_code: course.code,
-      course_name: course.name,
-      property_code: propertyCode,
-      property_name: propertyName,
-      cleaning_date: date,
-      weather,
-      start_time: start,
-      end_time: end,
-      check_items: checks.join('／'),
-      special_items: specials.join('／'),
-      notes
+    // まず記録を保存してIDを取得
+    const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/cleaning_records`, {
+      method: 'POST',
+      headers: { ...SB_HEADERS, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+      body: JSON.stringify({
+        staff_name: staffName,
+        course_code: course.code,
+        course_name: course.name,
+        property_code: propertyCode,
+        property_name: propertyName,
+        cleaning_date: date,
+        weather,
+        start_time: start,
+        end_time: end,
+        check_items: checks.join('／'),
+        special_items: specials.join('／'),
+        notes
+      })
     });
+    const inserted = await insertRes.json();
+    const recordId = inserted[0]?.id;
+    let ok = insertRes.ok;
+
+    // 写真アップロード
+    if (ok && recordId && _selectedPhotos.length > 0) {
+      const photoUrls = await uploadPhotos(recordId);
+      if (photoUrls.length > 0) {
+        await fetch(`${SUPABASE_URL}/rest/v1/cleaning_records?id=eq.${recordId}`, {
+          method: 'PATCH',
+          headers: { ...SB_HEADERS, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+          body: JSON.stringify({ photo_urls: JSON.stringify(photoUrls) })
+        });
+      }
+    }
 
     if (ok) {
+      _selectedPhotos = [];
+      renderPhotoPreview();
       // 特記事項があればメール通知（GAS経由）
       if (notes && notes.trim()) {
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbzdI8YT_zrDKzgTV_FqmCxdZn5TdwVHXLMAUcgjvIZ2_boKVdhPEafBjf_8LslMHOXn/exec';
@@ -387,6 +466,79 @@
     document.getElementById('formArea').style.display = 'block';
     document.getElementById('successArea').style.display = 'none';
     window.scrollTo(0,0);
+  }
+
+  let _selectedPhotos = []; // { file, dataUrl }
+
+  function onPhotoSelect(event) {
+    const files = [...event.target.files];
+    if (!files.length) return;
+    files.forEach(file => {
+      if (_selectedPhotos.length >= 10) { alert('写真は最大10枚までです'); return; }
+      const reader = new FileReader();
+      reader.onload = e => {
+        _selectedPhotos.push({ file, dataUrl: e.target.result });
+        renderPhotoPreview();
+      };
+      reader.readAsDataURL(file);
+    });
+    event.target.value = '';
+  }
+
+  function renderPhotoPreview() {
+    const grid = document.getElementById('photoPreviewGrid');
+    grid.innerHTML = _selectedPhotos.map((p,i) => `
+      <div class="photo-thumb">
+        <img src="${p.dataUrl}">
+        <button class="del-btn" onclick="removePhoto(${i})">✕</button>
+      </div>`).join('');
+    document.getElementById('photoProgress').textContent = _selectedPhotos.length > 0 ? `${_selectedPhotos.length}枚選択中` : '';
+  }
+
+  function removePhoto(i) {
+    _selectedPhotos.splice(i, 1);
+    renderPhotoPreview();
+  }
+
+  // 画像をCanvasで圧縮してBlobを返す
+  function compressImage(file, maxWidth=1200, quality=0.75) {
+    return new Promise(resolve => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const scale = Math.min(1, maxWidth / img.width);
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        canvas.toBlob(blob => resolve(blob), 'image/jpeg', quality);
+      };
+      img.src = url;
+    });
+  }
+
+  // Supabaseストレージに写真をアップロードしてURLリストを返す
+  async function uploadPhotos(recordId) {
+    if (!_selectedPhotos.length) return [];
+    const urls = [];
+    for (let i = 0; i < _selectedPhotos.length; i++) {
+      document.getElementById('photoProgress').textContent = `写真をアップロード中… ${i+1}/${_selectedPhotos.length}枚`;
+      const blob = await compressImage(_selectedPhotos[i].file);
+      const ext = 'jpg';
+      const path = `${recordId}/${Date.now()}_${i}.${ext}`;
+      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/photos/${path}`, {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'image/jpeg' },
+        body: blob
+      });
+      if (res.ok) {
+        urls.push(`${SUPABASE_URL}/storage/v1/object/public/photos/${path}`);
+      }
+    }
+    document.getElementById('photoProgress').textContent = `${urls.length}枚アップロード完了`;
+    return urls;
   }
 
   function saveStaffName() {
@@ -438,10 +590,11 @@
         list.innerHTML = `<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">今月の記録はありません</div>`;
         return;
       }
-      list.innerHTML = records.map(r => {
+      _monthlyRecords = records;
+      list.innerHTML = records.map((r,i) => {
         const d = r.cleaning_date ? r.cleaning_date.slice(5).replace('-','/') : '';
         const hasNotes = r.notes && r.notes.trim();
-        return `<div class="monthly-item">
+        return `<div class="monthly-item" onclick="openEditModal(${i})">
           <div class="monthly-date">${d}</div>
           <div style="flex:1;min-width:0">
             <div class="monthly-prop">${esc(r.property_name||'—')}</div>
@@ -449,12 +602,98 @@
           </div>
           ${r.staff_name ? `<span class="monthly-staff">${esc(r.staff_name)}</span>` : ''}
           ${hasNotes ? `<span class="monthly-notes">📝</span>` : ''}
+          <span class="edit-badge">修正</span>
         </div>`;
       }).join('');
     } catch(e) {
       document.getElementById('monthlyList').innerHTML = `<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">取得に失敗しました</div>`;
     }
   }
+
+  const CHECK_ITEMS = ['入口周り','ポスト・掲示板','通路','階段・手すり','各玄関ドア・機器','消火器','天井・クモの巣','照明','ゴミボックス','駐輪場・ポール','駐車場','植栽','水路'];
+  const SPECIAL_ITEMS = ['クモの巣多し','除草剤散布','落ち葉多し','階段拭き','照明（球切れ等）'];
+  let _monthlyRecords = [];
+  let _editIdx = -1;
+
+  function openEditModal(i) {
+    _editIdx = i;
+    const r = _monthlyRecords[i];
+    document.getElementById('editModalTitle').textContent = `修正：${r.property_name||''} ${r.cleaning_date||''}`;
+    const checkedItems = (r.check_items||'').split('／').filter(Boolean);
+    const checkedSpecials = (r.special_items||'').split('／').filter(Boolean);
+    document.getElementById('editModalBody').innerHTML = `
+      <div class="field"><label>実施日</label><input type="date" id="em_date" value="${esc(r.cleaning_date||'')}"></div>
+      <div class="field"><label>天候</label>
+        <div class="weather-group" id="em_weather_group">
+          ${['☀️ 晴','☁️ 曇','🌧️ 雨','❄️ 雪'].map(w=>{const v=w.split(' ')[1];return `<button type="button" class="weather-btn ${r.weather===v?'active':''}" onclick="setEmWeather('${v}',this)">${w}</button>`;}).join('')}
+        </div>
+        <input type="hidden" id="em_weather" value="${esc(r.weather||'')}">
+      </div>
+      <div class="field"><label>開始時刻</label><input type="time" id="em_start" value="${esc(r.start_time||'')}"></div>
+      <div class="field"><label>終了時刻</label><input type="time" id="em_end" value="${esc(r.end_time||'')}"></div>
+      <div class="field"><label>清掃項目</label>
+        <div class="check-grid">${CHECK_ITEMS.map(item=>`<label class="check-item"><input type="checkbox" name="em_check" value="${esc(item)}" ${checkedItems.includes(item)?'checked':''}><span>${esc(item)}</span></label>`).join('')}</div>
+      </div>
+      <div class="field"><label>追加対応</label>
+        <div class="check-grid">${SPECIAL_ITEMS.map(item=>`<label class="check-item"><input type="checkbox" name="em_special" value="${esc(item)}" ${checkedSpecials.includes(item)?'checked':''}><span>${esc(item)}</span></label>`).join('')}</div>
+      </div>
+      <div class="field"><label>特記事項</label><textarea id="em_notes">${esc(r.notes||'')}</textarea></div>
+      <div class="edit-modal-btns">
+        <button class="btn-edit-save" onclick="saveEditModal()">更新する</button>
+        <button class="btn-edit-del" onclick="deleteEditModal()">削除</button>
+      </div>`;
+    document.getElementById('editModalOverlay').classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function setEmWeather(val, btn) {
+    document.querySelectorAll('#em_weather_group .weather-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('em_weather').value = val;
+  }
+
+  async function saveEditModal() {
+    const r = _monthlyRecords[_editIdx];
+    const date = document.getElementById('em_date').value;
+    const weather = document.getElementById('em_weather').value;
+    const start = document.getElementById('em_start').value;
+    const end = document.getElementById('em_end').value;
+    const notes = document.getElementById('em_notes').value;
+    const checks = [...document.querySelectorAll('input[name="em_check"]:checked')].map(c=>c.value);
+    const specials = [...document.querySelectorAll('input[name="em_special"]:checked')].map(c=>c.value);
+    if (!date||!weather||!start||!end) { alert('実施日・天候・時刻は必須です'); return; }
+    const btn = document.querySelector('.btn-edit-save');
+    btn.textContent='更新中…'; btn.disabled=true;
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/cleaning_records?id=eq.${r.id}`, {
+      method:'PATCH',
+      headers:{...SB_HEADERS,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body: JSON.stringify({ cleaning_date:date, weather, start_time:start, end_time:end, check_items:checks.join('／'), special_items:specials.join('／'), notes })
+    });
+    btn.textContent='更新する'; btn.disabled=false;
+    if (res.ok) {
+      closeEditModalDirect();
+      try { const p = JSON.parse(document.getElementById('propertyName').value); loadMonthlyRecords(p.code, p.name); } catch(e) {}
+    } else {
+      alert('更新に失敗しました');
+    }
+  }
+
+  async function deleteEditModal() {
+    const r = _monthlyRecords[_editIdx];
+    if (!confirm(`${r.property_name} ${r.cleaning_date}の記録を削除しますか？`)) return;
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/cleaning_records?id=eq.${r.id}`, {
+      method:'DELETE', headers:SB_HEADERS
+    });
+    if (res.ok) {
+      closeEditModalDirect();
+      try { const p = JSON.parse(document.getElementById('propertyName').value); loadMonthlyRecords(p.code, p.name); } catch(e) {}
+    } else {
+      alert('削除に失敗しました');
+    }
+  }
+
+  function closeEditModal(e) { if(e.target===document.getElementById('editModalOverlay')) closeEditModalDirect(); }
+  function closeEditModalDirect() { document.getElementById('editModalOverlay').classList.remove('show'); document.body.style.overflow=''; }
 
   function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
