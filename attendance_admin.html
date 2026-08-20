@@ -233,6 +233,7 @@
             ${outT?`<span class="rc-tag tag-out">退勤 ${outT}</span>`:'<span class="rc-tag tag-noout">退勤未打刻</span>'}
             ${hours?`<span class="rc-tag tag-hours">${hours}h</span>`:''}
           </div>
+          ${r.driving?`<span class="rc-tag" style="background:#e8f4fd;color:#1a5276">🚗 運転</span>`:''}
           ${r.memo?`<div class="rc-memo">📝 ${esc(r.memo)}</div>`:''}
         </div>`;
       }).join('')}</div>`;
@@ -292,6 +293,7 @@
       <div class="field"><label>出勤時刻</label><input type="datetime-local" id="edit_in" value="${esc(toLocalInput(r.clock_in))}"></div>
       <div class="field"><label>退勤時刻</label><input type="datetime-local" id="edit_out" value="${esc(toLocalInput(r.clock_out))}"></div>
       <div class="field"><label>作業メモ</label><textarea id="edit_memo">${esc(r.memo||'')}</textarea></div>
+      <div class="field"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="edit_driving" ${r.driving?'checked':''} style="width:18px;height:18px;accent-color:var(--blue)"> 運転あり</label></div>
       <div class="modal-btn-row">
         <button class="btn-save" onclick="saveEdit()">更新する</button>
         <button class="btn-del" onclick="deleteRecord()">削除</button>
@@ -306,7 +308,8 @@
     const outVal = document.getElementById('edit_out').value;
     const memo = document.getElementById('edit_memo').value;
     const toJSTiso = (s) => s ? s+':00+09:00' : null;
-    const ok = await sbPatch('attendance',`?id=eq.${r.id}`,{ clock_in:toJSTiso(inVal), clock_out:toJSTiso(outVal), memo });
+    const driving = document.getElementById('edit_driving').checked;
+    const ok = await sbPatch('attendance',`?id=eq.${r.id}`,{ clock_in:toJSTiso(inVal), clock_out:toJSTiso(outVal), memo, driving });
     if (ok) { closeEditDirect(); loadList(); } else { alert('更新に失敗しました'); }
   }
 

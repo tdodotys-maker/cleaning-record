@@ -225,6 +225,14 @@
     </div>
 
     <div class="card">
+      <h2>運転</h2>
+      <label style="display:flex;align-items:center;gap:10px;padding:4px 0;cursor:pointer">
+        <input type="checkbox" id="drivingCheck" style="width:22px;height:22px;accent-color:var(--blue);flex-shrink:0">
+        <span style="font-size:14px">運転あり</span>
+      </label>
+    </div>
+
+    <div class="card">
       <h2>作業メモ（任意）</h2>
       <div class="field">
         <textarea id="memoInput" placeholder="本日の作業内容・連絡事項など"></textarea>
@@ -359,6 +367,7 @@
         <div class="row"><span class="status-label">出勤</span><span class="status-val">${inT}</span></div>
         <div class="row"><span class="status-label">退勤</span><span class="status-val">${outT}</span></div>
         <div class="row"><span class="status-label">勤務時間</span><span class="status-val">${hours}</span></div>
+        ${todayRecord.driving ? `<div class="row"><span class="status-label">運転</span><span class="status-val">あり</span></div>` : ''}
         ${todayRecord.memo ? `<div class="row"><span class="status-label">メモ</span><span class="status-val" style="font-size:12px">${esc(todayRecord.memo)}</span></div>` : ''}`;
 
       if (todayRecord.clock_in) {
@@ -370,6 +379,7 @@
         document.getElementById('outTime').textContent = outT;
       }
       if (todayRecord.memo) document.getElementById('memoInput').value = todayRecord.memo;
+      document.getElementById('drivingCheck').checked = !!todayRecord.driving;
     } else {
       statusBox.style.display = 'none';
       btnIn.classList.remove('done');
@@ -465,15 +475,16 @@
     };
 
     const workDate = getClockDate() || todayJST();
+    const driving = document.getElementById('drivingCheck').checked;
     if (todayRecord) {
-      const update = { clock_in: toISO(inVal), memo };
+      const update = { clock_in: toISO(inVal), memo, driving };
       if (outVal) update.clock_out = toISO(outVal);
       await sbPatch('attendance', `?id=eq.${todayRecord.id}`, update);
       todayRecord.clock_in = toISO(inVal);
       if (outVal) todayRecord.clock_out = toISO(outVal);
       todayRecord.memo = memo;
     } else {
-      const data = { staff_name:staffName, work_date:workDate, clock_in:toISO(inVal), memo };
+      const data = { staff_name:staffName, work_date:workDate, clock_in:toISO(inVal), memo, driving };
       if (outVal) data.clock_out = toISO(outVal);
       const rows = await sbInsert('attendance', data);
       todayRecord = rows[0];
@@ -537,6 +548,7 @@
           ${inT ? `<span class="rc-tag tag-in">出勤 ${inT}</span>` : ''}
           ${outT ? `<span class="rc-tag tag-out">退勤 ${outT}</span>` : '<span class="rc-tag tag-noout">退勤未打刻</span>'}
           ${hours ? `<span class="rc-tag tag-hours">${hours}h</span>` : ''}
+          ${r.driving ? `<span class="rc-tag" style="background:#e8f4fd;color:#1a5276">🚗 運転</span>` : ''}
         </div>
         ${r.memo ? `<div class="rc-memo">📝 ${esc(r.memo)}</div>` : ''}
       </div>`;
@@ -560,6 +572,7 @@
       <div class="field"><label>出勤時刻</label><input type="datetime-local" id="edit_in" value="${esc(inVal)}"></div>
       <div class="field"><label>退勤時刻</label><input type="datetime-local" id="edit_out" value="${esc(outVal)}"></div>
       <div class="field"><label>作業メモ</label><textarea id="edit_memo">${esc(r.memo||'')}</textarea></div>
+      <div class="field"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="edit_driving" ${r.driving?'checked':''} style="width:18px;height:18px;accent-color:var(--blue)"> 運転あり</label></div>
       <div class="modal-btn-row">
         <button class="btn-save" onclick="saveEdit()">更新する</button>
         <button class="btn-del" onclick="deleteRecord()">削除</button>
@@ -577,10 +590,12 @@
       if (!localStr) return null;
       return localStr + ':00+09:00';
     };
+    const driving = document.getElementById('edit_driving').checked;
     const ok = await sbPatch('attendance', `?id=eq.${r.id}`, {
       clock_in: toJSTiso(inVal),
       clock_out: toJSTiso(outVal),
-      memo
+      memo,
+      driving
     });
     if (ok) { closeEditDirect(); loadList(); } else { alert('更新に失敗しました'); }
   }
