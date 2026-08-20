@@ -61,7 +61,7 @@
   <div><h1>集計</h1><p>コース・物件ごとの清掃実績</p></div>
   <div class="header-right">
     <a class="header-link" href="records.html">📋 記録一覧</a>
-    <a class="header-link" href="admin_properties.html">🏢 物件管理</a>
+    
     <a class="header-link" href="cleaning_record.html">🧹 入力</a>
   </div>
 </header>
@@ -124,21 +124,39 @@
     if (!records.length) { document.getElementById('statsArea').innerHTML=`<div class="empty">該当する記録がありません</div>`; return; }
     const totalMin=records.reduce((s,r)=>{ if(!r.start_time||!r.end_time) return s; const [sh,sm]=r.start_time.split(':').map(Number),[eh,em]=r.end_time.split(':').map(Number); return s+(eh*60+em)-(sh*60+sm); },0);
     const withNotes=records.filter(r=>r.notes&&r.notes.trim()).length;
-    const avgMin=Math.round(totalMin/records.length);
+    const uniqueDates=new Set(records.map(r=>r.cleaning_date)).size;
+    const avgMin=uniqueDates>0?Math.round(totalMin/uniqueDates):0;
     const propSet=new Set(records.map(r=>r.property_code));
     const courseStat={}, propStat={}, weatherStat={'晴':0,'曇':0,'雨':0,'雪':0}, staffStat={};
+
+    // 日付単位でユニークカウント用セット
+    const courseDates={}, propDates={}, staffDates={}, weatherDates=new Set();
+
     records.forEach(r=>{
       const ck=r.course_name||'不明';
-      if (!courseStat[ck]) courseStat[ck]={code:r.course_code||'',count:0,notes:0,min:0};
-      courseStat[ck].count++; if(r.notes&&r.notes.trim()) courseStat[ck].notes++;
-      if(r.start_time&&r.end_time){const[sh,sm]=r.start_time.split(':').map(Number),[eh,em]=r.end_time.split(':').map(Number);courseStat[ck].min+=(eh*60+em)-(sh*60+sm);}
       const pk=r.property_name||'不明';
-      if (!propStat[pk]) propStat[pk]={code:r.property_code||'',count:0,notes:0,course:r.course_name||'',courseCode:r.course_code||''};
-      propStat[pk].count++; if(r.notes&&r.notes.trim()) propStat[pk].notes++;
-      if(r.weather&&weatherStat[r.weather]!==undefined) weatherStat[r.weather]++;
       const sk=r.staff_name||'不明';
-      if(!staffStat[sk]) staffStat[sk]={count:0,notes:0};
-      staffStat[sk].count++; if(r.notes&&r.notes.trim()) staffStat[sk].notes++;
+      const dateKey = r.cleaning_date||'';
+
+      // コース別（同日同コースは1回）
+      if (!courseStat[ck]) { courseStat[ck]={code:r.course_code||'',count:0,notes:0,min:0}; courseDates[ck]=new Set(); }
+      if (!courseDates[ck].has(dateKey)) { courseStat[ck].count++; courseDates[ck].add(dateKey); }
+      if(r.notes&&r.notes.trim()) courseStat[ck].notes++;
+      if(r.start_time&&r.end_time){const[sh,sm]=r.start_time.split(':').map(Number),[eh,em]=r.end_time.split(':').map(Number);courseStat[ck].min+=(eh*60+em)-(sh*60+sm);}
+
+      // 物件別（同日同物件は1回）
+      if (!propStat[pk]) { propStat[pk]={code:r.property_code||'',count:0,notes:0,course:r.course_name||'',courseCode:r.course_code||''}; propDates[pk]=new Set(); }
+      if (!propDates[pk].has(dateKey)) { propStat[pk].count++; propDates[pk].add(dateKey); }
+      if(r.notes&&r.notes.trim()) propStat[pk].notes++;
+
+      // 天候（同日は1回）
+      const weatherKey = `${dateKey}_${r.weather}`;
+      if(r.weather&&weatherStat[r.weather]!==undefined&&!weatherDates.has(weatherKey)){ weatherStat[r.weather]++; weatherDates.add(weatherKey); }
+
+      // 入力者別（同日同スタッフは1回）
+      if(!staffStat[sk]) { staffStat[sk]={count:0,notes:0}; staffDates[sk]=new Set(); }
+      if(!staffDates[sk].has(dateKey)) { staffStat[sk].count++; staffDates[sk].add(dateKey); }
+      if(r.notes&&r.notes.trim()) staffStat[sk].notes++;
     });
     const maxC=Math.max(...Object.values(courseStat).map(v=>v.count));
     const maxP=Math.max(...Object.values(propStat).map(v=>v.count));
@@ -153,7 +171,7 @@
       <td class="num-cell">${v.count}回</td><td class="num-cell orange">${v.notes>0?v.notes+'件':'—'}</td></tr>`).join('');
     document.getElementById('statsArea').innerHTML=`
       <div class="summary-grid">
-        <div class="summary-card"><div class="num">${records.length}</div><div class="label">総清掃回数</div></div>
+        <div class="summary-card"><div class="num">${uniqueDates}</div><div class="label">総清掃日数</div></div>
         <div class="summary-card orange"><div class="num">${withNotes}</div><div class="label">特記事項あり</div></div>
         <div class="summary-card blue"><div class="num">${avgMin}</div><div class="label">平均清掃時間（分）</div></div>
         <div class="summary-card"><div class="num">${propSet.size}</div><div class="label">対応物件数</div></div>
