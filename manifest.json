@@ -1,5 +1,5 @@
 {
-  "name": "清掃実施記録",
+  "name": "kiyoshi",
   "short_name": "清掃記録",
   "description": "清掃実施記録システム",
   "start_url": "./cleaning_record.html",
