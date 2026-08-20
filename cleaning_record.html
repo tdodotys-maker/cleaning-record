@@ -231,6 +231,13 @@
           📷 写真を選択（複数可）
         </label>
         <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="onPhotoSelect(event)">
+        <div style="margin-top:10px;padding:10px 12px;background:var(--green-pale);border-radius:8px;border-left:3px solid var(--green-light)">
+          <div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:4px">写真撮影時の注意点</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.8">
+            ・作業前、作業後<br>
+            ・近くから撮影、離れた場所から撮影（位置がわかるように）
+          </div>
+        </div>
         <div class="photo-preview-grid" id="photoPreviewGrid"></div>
         <div class="photo-progress" id="photoProgress"></div>
       </div>
@@ -618,7 +625,7 @@
     }
   }
 
-  const CHECK_ITEMS = ['入口周り','ポスト・掲示板','通路','階段・手すり','各玄関ドア・機器','消火器','天井・クモの巣','照明','ゴミボックス','駐輪場・ポール','駐車場','植栽','水路'];
+  const CHECK_ITEMS = ['入口周り','ポスト・掲示板','通路','階段・手すり','各玄関ドア・機器','消火器','天井・クモの巣','照明','ゴミボックス','駐輪場・ポール','駐車場','植栽','水路','砂取り'];
   const SPECIAL_ITEMS = ['クモの巣多し','除草剤散布','落ち葉多し','階段拭き','照明（球切れ等）'];
   let _monthlyRecords = [];
   let _editIdx = -1;
