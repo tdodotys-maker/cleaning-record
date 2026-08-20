@@ -145,6 +145,7 @@
   <div class="icon">⏰</div>
   <div class="title"><h1>勤怠管理</h1><p>出退勤の記録・確認</p></div>
   <div class="nav">
+    <a href="attendance_admin.html">⚙️</a>
     <a href="cleaning_record.html">🧹 清掃記録</a>
   </div>
 </header>
@@ -169,14 +170,21 @@
 <div class="container">
   <div class="page-tabs">
     <button class="page-tab active" onclick="switchPage('clock',this)">打刻</button>
-    <button class="page-tab" onclick="switchPage('list',this)">記録一覧</button>
-    <button class="page-tab" onclick="switchPage('stats',this)">集計</button>
+    <button class="page-tab" onclick="switchPage('list',this)">自分の記録</button>
   </div>
 
   <!-- 打刻ページ -->
   <div class="page active" id="page-clock">
     <div class="current-time" id="currentTime">--:--:--</div>
     <div class="current-date" id="currentDate"></div>
+
+    <div class="card" style="margin-bottom:12px;padding:12px 14px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="font-size:12px;color:var(--muted);font-weight:600;flex-shrink:0">打刻日</div>
+        <input type="date" id="clockDate" onchange="onDateChange()" style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit">
+        <button onclick="setToday()" style="padding:8px 12px;background:var(--blue-pale);border:1.5px solid var(--border);border-radius:8px;font-size:12px;color:var(--blue);font-weight:700;cursor:pointer;white-space:nowrap">今日</button>
+      </div>
+    </div>
 
     <div class="staff-bar">
       <div>
@@ -229,8 +237,7 @@
   <!-- 記録一覧ページ -->
   <div class="page" id="page-list">
     <div class="filter-box">
-      <input type="month" id="filterMonth">
-      <select id="filterStaff"><option value="">全スタッフ</option></select>
+      <input type="month" id="filterMonth" onchange="loadList()">
     </div>
     <div class="count-bar">
       <span id="listCount">読み込み中…</span>
@@ -239,15 +246,7 @@
     <div id="recordList"><div class="loading"><span class="spinner"></span>読み込み中…</div></div>
   </div>
 
-  <!-- 集計ページ -->
-  <div class="page" id="page-stats">
-    <div class="filter-box">
-      <input type="month" id="statsMonth">
-      <select id="statsStaff"><option value="">全スタッフ</option></select>
-      <button class="btn-reload" style="padding:8px 14px;border:1.5px solid var(--blue);border-radius:8px;background:var(--blue);color:white;font-size:13px;font-weight:700;cursor:pointer" onclick="loadStats()">集計</button>
-    </div>
-    <div id="statsArea"><div class="loading"><span class="spinner"></span>読み込み中…</div></div>
-  </div>
+
 
 </div>
 
@@ -291,7 +290,6 @@
     document.getElementById('page-'+name).classList.add('active');
     el.classList.add('active');
     if (name==='list') loadList();
-    if (name==='stats') loadStats();
   }
 
   // ===== 時計 =====
@@ -323,7 +321,7 @@
   async function loadTodayRecord() {
     if (!staffName) { showNameModal(); return; }
     document.getElementById('staffDisplay').textContent = staffName;
-    const today = new Date().toISOString().split('T')[0];
+    const today = getClockDate() || todayJST();
     const rows = await sbGet('attendance', `?staff_name=eq.${encodeURIComponent(staffName)}&work_date=eq.${today}&order=created_at.desc&limit=1`);
     todayRecord = rows.length ? rows[0] : null;
     renderClockButtons();
@@ -338,11 +336,13 @@
     // 手入力欄に今日の時刻を反映
     if (todayRecord?.clock_in) {
       const inT = new Date(todayRecord.clock_in);
-      document.getElementById('manualIn').value = `${String(inT.getHours()).padStart(2,'0')}:${String(inT.getMinutes()).padStart(2,'0')}`;
+      const inH = inT.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Tokyo'});
+      document.getElementById('manualIn').value = inH;
     }
     if (todayRecord?.clock_out) {
       const outT = new Date(todayRecord.clock_out);
-      document.getElementById('manualOut').value = `${String(outT.getHours()).padStart(2,'0')}:${String(outT.getMinutes()).padStart(2,'0')}`;
+      const outH = outT.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Tokyo'});
+      document.getElementById('manualOut').value = outH;
     }
 
     if (todayRecord) {
@@ -378,13 +378,51 @@
     }
   }
 
+  function nowJST() {
+    const now = new Date();
+    const offset = 9 * 60;
+    const jst = new Date(now.getTime() + offset * 60000);
+    return jst.toISOString().replace('Z', '+09:00');
+  }
+
+  function todayJST() {
+    const now = new Date();
+    const offset = 9 * 60;
+    const jst = new Date(now.getTime() + offset * 60000);
+    return jst.toISOString().split('T')[0];
+  }
+
+  function getClockDate() {
+    return document.getElementById('clockDate')?.value || todayJST();
+  }
+
+  function timeToJSTiso(date, timeStr) {
+    const [h,m] = timeStr.split(':');
+    return `${date}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00+09:00`;
+  }
+
+  function nowOnDate(date) {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2,'0');
+    const m = String(now.getMinutes()).padStart(2,'0');
+    return `${date}T${h}:${m}:00+09:00`;
+  }
+
+  async function onDateChange() {
+    await loadTodayRecord();
+  }
+
+  function setToday() {
+    document.getElementById('clockDate').value = todayJST();
+    loadTodayRecord();
+  }
+
   async function clockIn() {
     if (!staffName) { showNameModal(); return; }
-    if (todayRecord?.clock_in) { alert('本日はすでに出勤済みです'); return; }
-    const now = new Date();
-    const today = now.toISOString().split('T')[0];
+    if (todayRecord?.clock_in) { alert('この日はすでに出勤済みです'); return; }
+    const workDate = getClockDate();
     const memo = document.getElementById('memoInput').value;
-    const rows = await sbInsert('attendance', { staff_name:staffName, work_date:today, clock_in:now.toISOString(), memo });
+    const rows = await sbInsert('attendance', { staff_name:staffName, work_date:workDate, clock_in:nowOnDate(workDate), memo });
     todayRecord = rows[0];
     showMessage('出勤を記録しました ✓');
     renderClockButtons();
@@ -393,11 +431,11 @@
   async function clockOut() {
     if (!staffName) { showNameModal(); return; }
     if (!todayRecord) { alert('まず出勤を打刻してください'); return; }
-    if (todayRecord?.clock_out) { alert('本日はすでに退勤済みです'); return; }
-    const now = new Date();
+    if (todayRecord?.clock_out) { alert('この日はすでに退勤済みです'); return; }
+    const workDate = getClockDate();
     const memo = document.getElementById('memoInput').value;
-    await sbPatch('attendance', `?id=eq.${todayRecord.id}`, { clock_out:now.toISOString(), memo });
-    todayRecord.clock_out = now.toISOString();
+    await sbPatch('attendance', `?id=eq.${todayRecord.id}`, { clock_out:nowOnDate(workDate), memo });
+    todayRecord.clock_out = nowOnDate(workDate);
     todayRecord.memo = memo;
     showMessage('退勤を記録しました ✓');
     renderClockButtons();
@@ -421,13 +459,12 @@
     // 時刻をDateに変換
     const toISO = (timeStr) => {
       const [h,m] = timeStr.split(':');
-      const d = new Date();
-      d.setHours(Number(h), Number(m), 0, 0);
-      return d.toISOString();
+      const date = getClockDate() || todayJST();
+      return `${date}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00+09:00`;
     };
 
+    const workDate = getClockDate() || todayJST();
     if (todayRecord) {
-      // 既存レコードを更新
       const update = { clock_in: toISO(inVal), memo };
       if (outVal) update.clock_out = toISO(outVal);
       await sbPatch('attendance', `?id=eq.${todayRecord.id}`, update);
@@ -435,8 +472,7 @@
       if (outVal) todayRecord.clock_out = toISO(outVal);
       todayRecord.memo = memo;
     } else {
-      // 新規レコードを作成
-      const data = { staff_name:staffName, work_date:today, clock_in:toISO(inVal), memo };
+      const data = { staff_name:staffName, work_date:workDate, clock_in:toISO(inVal), memo };
       if (outVal) data.clock_out = toISO(outVal);
       const rows = await sbInsert('attendance', data);
       todayRecord = rows[0];
@@ -447,20 +483,13 @@
 
   // ===== 記録一覧 =====
   async function loadList() {
+    if (!staffName) return;
     document.getElementById('recordList').innerHTML = `<div class="loading"><span class="spinner"></span>読み込み中…</div>`;
     const month = document.getElementById('filterMonth').value;
-    const staff = document.getElementById('filterStaff').value;
-    let q = '?order=work_date.desc,created_at.desc';
+    let q = `?staff_name=eq.${encodeURIComponent(staffName)}&order=work_date.desc,created_at.desc`;
     if (month) { q += `&work_date=gte.${month}-01&work_date=lte.${month}-31`; }
-    if (staff) { q += `&staff_name=eq.${encodeURIComponent(staff)}`; }
     try {
       allRecords = await sbGet('attendance', q);
-      // スタッフフィルター更新
-      const staffSet = [...new Set(allRecords.map(r=>r.staff_name).filter(Boolean))].sort();
-      const sel = document.getElementById('filterStaff');
-      const cur = sel.value;
-      sel.innerHTML = '<option value="">全スタッフ</option>';
-      staffSet.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; if(s===cur) o.selected=true; sel.appendChild(o); });
       renderList();
     } catch(e) {
       document.getElementById('recordList').innerHTML = `<div class="empty">取得に失敗しました</div>`;
@@ -472,8 +501,8 @@
     const area = document.getElementById('recordList');
     if (!allRecords.length) { area.innerHTML=`<div class="empty">記録がありません</div>`; return; }
     area.innerHTML = `<div class="record-list">${allRecords.map((r,i)=>{
-      const inT = r.clock_in ? new Date(r.clock_in).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}) : null;
-      const outT = r.clock_out ? new Date(r.clock_out).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}) : null;
+      const inT = r.clock_in ? new Date(r.clock_in).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Tokyo'}) : null;
+      const outT = r.clock_out ? new Date(r.clock_out).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Tokyo'}) : null;
       let hours = null;
       if (r.clock_in && r.clock_out) {
         const diff = (new Date(r.clock_out) - new Date(r.clock_in)) / 3600000;
@@ -494,77 +523,18 @@
     }).join('')}</div>`;
   }
 
-  // ===== 集計 =====
-  async function loadStats() {
-    document.getElementById('statsArea').innerHTML = `<div class="loading"><span class="spinner"></span>集計中…</div>`;
-    const month = document.getElementById('statsMonth').value;
-    const staff = document.getElementById('statsStaff').value;
-    let q = '?order=work_date.asc';
-    if (month) { q += `&work_date=gte.${month}-01&work_date=lte.${month}-31`; }
-    if (staff) { q += `&staff_name=eq.${encodeURIComponent(staff)}`; }
-    try {
-      const records = await sbGet('attendance', q);
-      // スタッフフィルター更新
-      const staffSet = [...new Set(records.map(r=>r.staff_name).filter(Boolean))].sort();
-      const sel = document.getElementById('statsStaff');
-      const cur = sel.value;
-      sel.innerHTML = '<option value="">全スタッフ</option>';
-      staffSet.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; if(s===cur) o.selected=true; sel.appendChild(o); });
-
-      if (!records.length) { document.getElementById('statsArea').innerHTML=`<div class="empty">データがありません</div>`; return; }
-
-      // スタッフ別集計
-      const byStaff = {};
-      records.forEach(r => {
-        const s = r.staff_name || '不明';
-        if (!byStaff[s]) byStaff[s] = { days:0, hours:0, noOut:0 };
-        byStaff[s].days++;
-        if (r.clock_in && r.clock_out) {
-          byStaff[s].hours += (new Date(r.clock_out) - new Date(r.clock_in)) / 3600000;
-        } else if (r.clock_in) {
-          byStaff[s].noOut++;
-        }
-      });
-
-      const totalDays = records.length;
-      const totalHours = Object.values(byStaff).reduce((s,v)=>s+v.hours, 0);
-      const staffCount = Object.keys(byStaff).length;
-
-      const rows = Object.entries(byStaff).map(([name,v])=>`
-        <tr>
-          <td>${esc(name)}</td>
-          <td style="text-align:right;font-weight:700">${v.days}日</td>
-          <td style="text-align:right;font-weight:700;color:var(--blue)">${v.hours.toFixed(1)}h</td>
-          <td style="text-align:right;color:var(--muted)">${v.days>0?(v.hours/v.days).toFixed(1)+'h':'—'}</td>
-          <td style="text-align:right;color:${v.noOut>0?'var(--orange)':'var(--muted)'}">${v.noOut>0?v.noOut+'件':'—'}</td>
-        </tr>`).join('');
-
-      document.getElementById('statsArea').innerHTML = `
-        <div class="summary-grid">
-          <div class="summary-card"><div class="num">${totalDays}</div><div class="label">総出勤日数</div></div>
-          <div class="summary-card"><div class="num">${totalHours.toFixed(1)}</div><div class="label">総勤務時間（h）</div></div>
-          <div class="summary-card"><div class="num">${staffCount}</div><div class="label">スタッフ数</div></div>
-          <div class="summary-card"><div class="num">${staffCount>0?(totalHours/staffCount).toFixed(1):0}</div><div class="label">平均勤務時間（h）</div></div>
-        </div>
-        <div class="card" style="padding:0;overflow:hidden">
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>スタッフ</th><th style="text-align:right">出勤日数</th><th style="text-align:right">総時間</th><th style="text-align:right">平均/日</th><th style="text-align:right">未退勤</th></tr></thead>
-              <tbody>${rows}</tbody>
-            </table>
-          </div>
-        </div>`;
-    } catch(e) {
-      document.getElementById('statsArea').innerHTML = `<div class="empty">取得に失敗しました</div>`;
-    }
-  }
-
   // ===== 編集モーダル =====
   function openEdit(i) {
     editIdx = i;
     const r = allRecords[i];
-    const inVal = r.clock_in ? new Date(r.clock_in).toISOString().slice(0,16) : '';
-    const outVal = r.clock_out ? new Date(r.clock_out).toISOString().slice(0,16) : '';
+    const toLocalInput = (iso) => {
+      if (!iso) return '';
+      const d = new Date(iso);
+      const jst = new Date(d.getTime() + 9*60*60000);
+      return jst.toISOString().slice(0,16);
+    };
+    const inVal = toLocalInput(r.clock_in);
+    const outVal = toLocalInput(r.clock_out);
     document.getElementById('editTitle').textContent = `修正：${r.staff_name} ${r.work_date}`;
     document.getElementById('editBody').innerHTML = `
       <div class="field"><label>出勤時刻</label><input type="datetime-local" id="edit_in" value="${esc(inVal)}"></div>
@@ -583,9 +553,13 @@
     const inVal = document.getElementById('edit_in').value;
     const outVal = document.getElementById('edit_out').value;
     const memo = document.getElementById('edit_memo').value;
+    const toJSTiso = (localStr) => {
+      if (!localStr) return null;
+      return localStr + ':00+09:00';
+    };
     const ok = await sbPatch('attendance', `?id=eq.${r.id}`, {
-      clock_in: inVal ? new Date(inVal).toISOString() : null,
-      clock_out: outVal ? new Date(outVal).toISOString() : null,
+      clock_in: toJSTiso(inVal),
+      clock_out: toJSTiso(outVal),
       memo
     });
     if (ok) { closeEditDirect(); loadList(); } else { alert('更新に失敗しました'); }
@@ -606,6 +580,8 @@
   const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   document.getElementById('filterMonth').value = ym;
   document.getElementById('statsMonth').value = ym;
+
+  document.getElementById('clockDate').value = todayJST();
 
   if (!staffName) {
     showNameModal();

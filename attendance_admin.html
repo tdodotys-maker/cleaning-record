@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>勤怠管理（管理者）</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --blue:#1a5276; --blue-light:#2980b9; --blue-pale:#d6eaf8;
+    --bg:#f0f4f8; --text:#1a2a3a; --muted:#5d7a94;
+    --border:#a9cce3; --white:#ffffff; --red:#c0392b; --green:#2d6a4f;
+    --orange:#e67e22;
+  }
+  body { font-family:-apple-system,'Hiragino Sans','Yu Gothic',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; font-size:15px; }
+  header { background:var(--blue); color:white; padding:16px 20px; display:flex; align-items:center; gap:10px; position:sticky; top:0; z-index:100; box-shadow:0 2px 8px rgba(0,0,0,.15); }
+  header .icon { font-size:22px; }
+  header .title { flex:1; }
+  header .title h1 { font-size:17px; font-weight:700; }
+  header .title p { font-size:12px; opacity:.75; margin-top:2px; }
+  .nav { display:flex; gap:10px; flex-shrink:0; }
+  .nav a { color:rgba(255,255,255,.8); font-size:12px; text-decoration:none; white-space:nowrap; }
+  .container { padding:16px; max-width:640px; margin:0 auto; }
+
+  /* PINロック */
+  .lock-overlay { display:flex; position:fixed; inset:0; background:var(--bg); z-index:500; flex-direction:column; align-items:center; justify-content:center; padding:24px; }
+  .lock-overlay .lock-icon { font-size:48px; margin-bottom:16px; }
+  .lock-overlay h2 { font-size:18px; font-weight:700; color:var(--blue); margin-bottom:6px; }
+  .lock-overlay p { font-size:13px; color:var(--muted); margin-bottom:24px; }
+  .pin-input { display:flex; gap:10px; margin-bottom:16px; }
+  .pin-digit { width:52px; height:60px; border:2px solid var(--border); border-radius:10px; font-size:24px; text-align:center; font-family:monospace; background:var(--white); color:var(--text); }
+  .pin-digit:focus { outline:none; border-color:var(--blue-light); box-shadow:0 0 0 3px rgba(41,128,185,.2); }
+  .pin-error { color:var(--red); font-size:13px; margin-bottom:12px; min-height:20px; }
+  .btn-unlock { padding:12px 40px; background:var(--blue); color:white; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; }
+
+  /* タブ */
+  .page-tabs { display:flex; gap:0; margin-bottom:16px; border-radius:10px; overflow:hidden; border:1.5px solid var(--border); }
+  .page-tab { flex:1; padding:11px 4px; text-align:center; font-size:13px; font-weight:700; cursor:pointer; background:var(--white); color:var(--muted); border:none; transition:all .15s; }
+  .page-tab.active { background:var(--blue); color:white; }
+  .page-tab:not(:last-child) { border-right:1.5px solid var(--border); }
+  .page { display:none; }
+  .page.active { display:block; }
+
+  .filter-box { background:var(--white); border-radius:12px; padding:12px 14px; margin-bottom:12px; box-shadow:0 1px 4px rgba(0,0,0,.07); display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .filter-box input, .filter-box select { flex:1; min-width:120px; padding:8px 10px; border:1.5px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit; appearance:none; -webkit-appearance:none; background:var(--white); }
+  .filter-box input:focus, .filter-box select:focus { outline:none; border-color:var(--blue-light); }
+  .filter-box select { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235d7a94' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; padding-right:30px; }
+  .btn-apply { padding:8px 16px; background:var(--blue); color:white; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; }
+
+  .count-bar { font-size:12px; color:var(--muted); margin-bottom:8px; display:flex; justify-content:space-between; }
+  .btn-reload { padding:5px 12px; border:1.5px solid var(--border); border-radius:6px; background:var(--white); font-size:12px; color:var(--muted); cursor:pointer; }
+
+  .record-list { display:flex; flex-direction:column; gap:8px; }
+  .record-card { background:var(--white); border-radius:10px; padding:12px 14px; box-shadow:0 1px 4px rgba(0,0,0,.07); border-left:4px solid var(--blue-light); cursor:pointer; }
+  .record-card.no-out { border-left-color:var(--orange); }
+  .rc-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px; }
+  .rc-staff { font-size:14px; font-weight:700; }
+  .rc-date { font-size:12px; color:var(--muted); }
+  .rc-times { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:4px; }
+  .rc-tag { font-size:11px; padding:3px 8px; border-radius:10px; font-weight:600; }
+  .tag-in { background:#d5f5e3; color:#1e8449; }
+  .tag-out { background:#fde8e8; color:var(--red); }
+  .tag-hours { background:var(--blue-pale); color:var(--blue); }
+  .tag-noout { background:#fef3cd; color:#856404; }
+  .rc-memo { font-size:12px; color:var(--muted); margin-top:4px; }
+
+  .summary-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+  .summary-card { background:var(--white); border-radius:12px; padding:14px; box-shadow:0 1px 4px rgba(0,0,0,.07); text-align:center; }
+  .summary-card .num { font-size:28px; font-weight:800; color:var(--blue); line-height:1; }
+  .summary-card .label { font-size:12px; color:var(--muted); margin-top:6px; }
+  .card { background:var(--white); border-radius:12px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.07); margin-bottom:14px; }
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { background:var(--bg); padding:9px 10px; text-align:left; font-size:12px; color:var(--muted); font-weight:600; border-bottom:1px solid var(--border); white-space:nowrap; }
+  td { padding:10px 10px; border-bottom:1px solid #f0f4f0; }
+  tr:last-child td { border-bottom:none; }
+
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:200; align-items:flex-end; justify-content:center; }
+  .modal-overlay.show { display:flex; }
+  .modal { background:var(--white); border-radius:16px 16px 0 0; padding:20px 20px 40px; width:100%; max-width:640px; max-height:85vh; overflow-y:auto; }
+  .modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+  .modal-header h2 { font-size:16px; font-weight:700; }
+  .btn-close { background:none; border:none; font-size:22px; cursor:pointer; color:var(--muted); }
+  .field { margin-bottom:12px; }
+  .field label { display:block; font-size:12px; color:var(--muted); font-weight:600; margin-bottom:5px; }
+  .field input, .field textarea { width:100%; padding:10px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit; }
+  .field input:focus, .field textarea:focus { outline:none; border-color:var(--blue-light); }
+  .field textarea { resize:vertical; min-height:70px; }
+  .modal-btn-row { display:flex; gap:8px; margin-top:14px; }
+  .btn-save { flex:1; padding:12px; background:var(--blue); color:white; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; }
+  .btn-del { padding:12px 16px; background:#fde8e8; color:var(--red); border:1.5px solid #f5c6c6; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; }
+
+  .empty { text-align:center; padding:30px; color:var(--muted); font-size:14px; }
+  .loading { text-align:center; padding:30px; color:var(--muted); font-size:14px; }
+  .spinner { display:inline-block; width:24px; height:24px; border:3px solid var(--border); border-top-color:var(--blue); border-radius:50%; animation:spin .8s linear infinite; margin-right:8px; vertical-align:middle; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- PINロック -->
+<div class="lock-overlay" id="lockOverlay">
+  <div class="lock-icon">🔐</div>
+  <h2>管理者専用</h2>
+  <p>PINを入力してください</p>
+  <div class="pin-input">
+    <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="p0" oninput="onPin(0)">
+    <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="p1" oninput="onPin(1)">
+    <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="p2" oninput="onPin(2)">
+    <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="p3" oninput="onPin(3)">
+  </div>
+  <div class="pin-error" id="pinError"></div>
+  <button class="btn-unlock" onclick="checkPin()">確認</button>
+</div>
+
+<!-- 編集モーダル -->
+<div class="modal-overlay" id="editOverlay" onclick="closeEdit(event)">
+  <div class="modal">
+    <div class="modal-header"><h2 id="editTitle">記録を修正</h2><button class="btn-close" onclick="closeEditDirect()">✕</button></div>
+    <div id="editBody"></div>
+  </div>
+</div>
+
+<header>
+  <div class="icon">⏰</div>
+  <div class="title"><h1>勤怠管理（管理者）</h1><p>全スタッフの記録・集計</p></div>
+  <div class="nav">
+    <a href="attendance.html">👤 スタッフ</a>
+    <a href="cleaning_record.html">🧹 清掃記録</a>
+  </div>
+</header>
+
+<div class="container">
+  <div class="page-tabs">
+    <button class="page-tab active" onclick="switchPage('list',this)">記録一覧</button>
+    <button class="page-tab" onclick="switchPage('stats',this)">集計</button>
+  </div>
+
+  <!-- 記録一覧 -->
+  <div class="page active" id="page-list">
+    <div class="filter-box">
+      <input type="month" id="filterMonth">
+      <select id="filterStaff"><option value="">全スタッフ</option></select>
+      <button class="btn-apply" onclick="loadList()">検索</button>
+    </div>
+    <div class="count-bar">
+      <span id="listCount">読み込み中…</span>
+      <button class="btn-reload" onclick="loadList()">🔄 再読み込み</button>
+    </div>
+    <div id="recordList"><div class="loading"><span class="spinner"></span>読み込み中…</div></div>
+  </div>
+
+  <!-- 集計 -->
+  <div class="page" id="page-stats">
+    <div class="filter-box">
+      <input type="month" id="statsMonth">
+      <select id="statsStaff"><option value="">全スタッフ</option></select>
+      <button class="btn-apply" onclick="loadStats()">集計</button>
+    </div>
+    <div id="statsArea"><div class="loading"><span class="spinner"></span>読み込み中…</div></div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://kcgycrzqmjdfxctmllaf.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_gIG_84rtMPMZCAsnStcj4w_yKYdJWCm';
+  const SB_H = { 'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY };
+  const PIN = '3136';
+  const SESSION_KEY = 'attendance_admin_unlocked';
+  let allRecords = [], editIdx = -1;
+
+  async function sbGet(table, q='') { const r=await fetch(`${SUPABASE_URL}/rest/v1/${table}${q}`,{headers:SB_H}); return r.json(); }
+  async function sbPatch(table, q, data) { const r=await fetch(`${SUPABASE_URL}/rest/v1/${table}${q}`,{method:'PATCH',headers:{...SB_H,'Prefer':'return=minimal'},body:JSON.stringify(data)}); return r.ok; }
+  async function sbDelete(table, q) { const r=await fetch(`${SUPABASE_URL}/rest/v1/${table}${q}`,{method:'DELETE',headers:SB_H}); return r.ok; }
+  function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  // PIN認証
+  function onPin(idx) {
+    const val = document.getElementById(`p${idx}`).value;
+    if (val && idx < 3) document.getElementById(`p${idx+1}`).focus();
+    if (idx === 3 && val) checkPin();
+  }
+  function checkPin() {
+    const pin = [0,1,2,3].map(i=>document.getElementById(`p${i}`).value).join('');
+    if (pin === PIN) {
+      sessionStorage.setItem(SESSION_KEY, 'true');
+      document.getElementById('lockOverlay').style.display = 'none';
+      init();
+    } else {
+      document.getElementById('pinError').textContent = 'PINが正しくありません';
+      [0,1,2,3].forEach(i=>{ document.getElementById(`p${i}`).value=''; });
+      document.getElementById('p0').focus();
+      setTimeout(()=>document.getElementById('pinError').textContent='', 2000);
+    }
+  }
+  document.addEventListener('keydown', e=>{ if(e.key==='Enter' && sessionStorage.getItem(SESSION_KEY)!=='true') checkPin(); });
+
+  function switchPage(name, el) {
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.page-tab').forEach(t=>t.classList.remove('active'));
+    document.getElementById('page-'+name).classList.add('active');
+    el.classList.add('active');
+    if (name==='list') loadList();
+    if (name==='stats') loadStats();
+  }
+
+  async function loadList() {
+    document.getElementById('recordList').innerHTML=`<div class="loading"><span class="spinner"></span>読み込み中…</div>`;
+    const month = document.getElementById('filterMonth').value;
+    const staff = document.getElementById('filterStaff').value;
+    let q = '?order=work_date.desc,created_at.desc';
+    if (month) q += `&work_date=gte.${month}-01&work_date=lte.${month}-31`;
+    if (staff) q += `&staff_name=eq.${encodeURIComponent(staff)}`;
+    try {
+      allRecords = await sbGet('attendance', q);
+      const staffSet = [...new Set(allRecords.map(r=>r.staff_name).filter(Boolean))].sort();
+      const sel = document.getElementById('filterStaff');
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">全スタッフ</option>';
+      staffSet.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; if(s===cur) o.selected=true; sel.appendChild(o); });
+      document.getElementById('listCount').textContent = `${allRecords.length}件`;
+      const area = document.getElementById('recordList');
+      if (!allRecords.length) { area.innerHTML=`<div class="empty">記録がありません</div>`; return; }
+      area.innerHTML = `<div class="record-list">${allRecords.map((r,i)=>{
+        const inT = r.clock_in ? new Date(r.clock_in).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Tokyo'}) : null;
+        const outT = r.clock_out ? new Date(r.clock_out).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Tokyo'}) : null;
+        let hours = null;
+        if (r.clock_in && r.clock_out) hours = ((new Date(r.clock_out)-new Date(r.clock_in))/3600000).toFixed(1);
+        return `<div class="record-card ${!outT?'no-out':''}" onclick="openEdit(${i})">
+          <div class="rc-top"><div class="rc-staff">${esc(r.staff_name||'—')}</div><div class="rc-date">${esc(r.work_date||'')}</div></div>
+          <div class="rc-times">
+            ${inT?`<span class="rc-tag tag-in">出勤 ${inT}</span>`:''}
+            ${outT?`<span class="rc-tag tag-out">退勤 ${outT}</span>`:'<span class="rc-tag tag-noout">退勤未打刻</span>'}
+            ${hours?`<span class="rc-tag tag-hours">${hours}h</span>`:''}
+          </div>
+          ${r.memo?`<div class="rc-memo">📝 ${esc(r.memo)}</div>`:''}
+        </div>`;
+      }).join('')}</div>`;
+    } catch(e) { document.getElementById('recordList').innerHTML=`<div class="empty">取得に失敗しました</div>`; }
+  }
+
+  async function loadStats() {
+    document.getElementById('statsArea').innerHTML=`<div class="loading"><span class="spinner"></span>集計中…</div>`;
+    const month = document.getElementById('statsMonth').value;
+    const staff = document.getElementById('statsStaff').value;
+    let q = '?order=work_date.asc';
+    if (month) q += `&work_date=gte.${month}-01&work_date=lte.${month}-31`;
+    if (staff) q += `&staff_name=eq.${encodeURIComponent(staff)}`;
+    try {
+      const records = await sbGet('attendance', q);
+      const staffSet = [...new Set(records.map(r=>r.staff_name).filter(Boolean))].sort();
+      const sel = document.getElementById('statsStaff');
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">全スタッフ</option>';
+      staffSet.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; if(s===cur) o.selected=true; sel.appendChild(o); });
+      if (!records.length) { document.getElementById('statsArea').innerHTML=`<div class="empty">データがありません</div>`; return; }
+      const byStaff = {};
+      records.forEach(r=>{
+        const s=r.staff_name||'不明';
+        if (!byStaff[s]) byStaff[s]={days:0,hours:0,noOut:0};
+        byStaff[s].days++;
+        if (r.clock_in&&r.clock_out) byStaff[s].hours+=(new Date(r.clock_out)-new Date(r.clock_in))/3600000;
+        else if (r.clock_in) byStaff[s].noOut++;
+      });
+      const totalDays=records.length, totalHours=Object.values(byStaff).reduce((s,v)=>s+v.hours,0), staffCount=Object.keys(byStaff).length;
+      const rows=Object.entries(byStaff).map(([name,v])=>`
+        <tr><td>${esc(name)}</td>
+        <td style="text-align:right;font-weight:700">${v.days}日</td>
+        <td style="text-align:right;font-weight:700;color:var(--blue)">${v.hours.toFixed(1)}h</td>
+        <td style="text-align:right;color:var(--muted)">${v.days>0?(v.hours/v.days).toFixed(1)+'h':'—'}</td>
+        <td style="text-align:right;color:${v.noOut>0?'var(--orange)':'var(--muted)'}">${v.noOut>0?v.noOut+'件':'—'}</td></tr>`).join('');
+      document.getElementById('statsArea').innerHTML=`
+        <div class="summary-grid">
+          <div class="summary-card"><div class="num">${totalDays}</div><div class="label">総出勤日数</div></div>
+          <div class="summary-card"><div class="num">${totalHours.toFixed(1)}</div><div class="label">総勤務時間（h）</div></div>
+          <div class="summary-card"><div class="num">${staffCount}</div><div class="label">スタッフ数</div></div>
+          <div class="summary-card"><div class="num">${staffCount>0?(totalHours/staffCount).toFixed(1):0}</div><div class="label">平均勤務時間（h）</div></div>
+        </div>
+        <div class="card"><div class="table-wrap"><table>
+          <thead><tr><th>スタッフ</th><th style="text-align:right">出勤日数</th><th style="text-align:right">総時間</th><th style="text-align:right">平均/日</th><th style="text-align:right">未退勤</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div></div>`;
+    } catch(e) { document.getElementById('statsArea').innerHTML=`<div class="empty">取得に失敗しました</div>`; }
+  }
+
+  function openEdit(i) {
+    editIdx = i;
+    const r = allRecords[i];
+    const toLocalInput = (iso) => { if(!iso) return ''; const d=new Date(iso); const jst=new Date(d.getTime()+9*60*60000); return jst.toISOString().slice(0,16); };
+    document.getElementById('editTitle').textContent = `修正：${r.staff_name} ${r.work_date}`;
+    document.getElementById('editBody').innerHTML = `
+      <div class="field"><label>出勤時刻</label><input type="datetime-local" id="edit_in" value="${esc(toLocalInput(r.clock_in))}"></div>
+      <div class="field"><label>退勤時刻</label><input type="datetime-local" id="edit_out" value="${esc(toLocalInput(r.clock_out))}"></div>
+      <div class="field"><label>作業メモ</label><textarea id="edit_memo">${esc(r.memo||'')}</textarea></div>
+      <div class="modal-btn-row">
+        <button class="btn-save" onclick="saveEdit()">更新する</button>
+        <button class="btn-del" onclick="deleteRecord()">削除</button>
+      </div>`;
+    document.getElementById('editOverlay').classList.add('show');
+    document.body.style.overflow='hidden';
+  }
+
+  async function saveEdit() {
+    const r = allRecords[editIdx];
+    const inVal = document.getElementById('edit_in').value;
+    const outVal = document.getElementById('edit_out').value;
+    const memo = document.getElementById('edit_memo').value;
+    const toJSTiso = (s) => s ? s+':00+09:00' : null;
+    const ok = await sbPatch('attendance',`?id=eq.${r.id}`,{ clock_in:toJSTiso(inVal), clock_out:toJSTiso(outVal), memo });
+    if (ok) { closeEditDirect(); loadList(); } else { alert('更新に失敗しました'); }
+  }
+
+  async function deleteRecord() {
+    const r = allRecords[editIdx];
+    if (!confirm(`${r.staff_name} ${r.work_date}の記録を削除しますか？`)) return;
+    const ok = await sbDelete('attendance',`?id=eq.${r.id}`);
+    if (ok) { closeEditDirect(); loadList(); } else { alert('削除に失敗しました'); }
+  }
+
+  function closeEdit(e) { if(e.target===document.getElementById('editOverlay')) closeEditDirect(); }
+  function closeEditDirect() { document.getElementById('editOverlay').classList.remove('show'); document.body.style.overflow=''; }
+
+  function init() {
+    const now = new Date();
+    const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    document.getElementById('filterMonth').value = ym;
+    document.getElementById('statsMonth').value = ym;
+    loadList();
+  }
+
+  if (sessionStorage.getItem(SESSION_KEY)==='true') {
+    document.getElementById('lockOverlay').style.display='none';
+    init();
+  } else {
+    document.getElementById('p0').focus();
+  }
+</script>
+</body>
+</html>
