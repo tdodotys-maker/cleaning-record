@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>管理者メニュー | 清掃記録システム</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --green:#2d6a4f; --green-light:#52b788; --green-pale:#d8f3dc;
+    --bg:#f8faf8; --text:#1b2e1e; --muted:#6b7c6e;
+    --border:#c5d9c7; --white:#ffffff; --red:#c0392b;
+  }
+  body { font-family:-apple-system,'Hiragino Sans','Yu Gothic',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; font-size:15px; }
+
+  /* PINロック */
+  .lock-overlay { display:flex; position:fixed; inset:0; background:var(--bg); z-index:500; flex-direction:column; align-items:center; justify-content:center; padding:24px; }
+  .lock-icon { font-size:48px; margin-bottom:16px; }
+  .lock-overlay h2 { font-size:18px; font-weight:700; color:var(--green); margin-bottom:6px; }
+  .lock-overlay p { font-size:13px; color:var(--muted); margin-bottom:24px; }
+  .pin-input { display:flex; gap:10px; margin-bottom:16px; }
+  .pin-digit { width:52px; height:60px; border:2px solid var(--border); border-radius:10px; font-size:24px; text-align:center; font-family:monospace; background:var(--white); color:var(--text); }
+  .pin-digit:focus { outline:none; border-color:var(--green-light); box-shadow:0 0 0 3px rgba(82,183,136,.2); }
+  .pin-error { color:var(--red); font-size:13px; margin-bottom:12px; min-height:20px; }
+  .btn-unlock { padding:12px 40px; background:var(--green); color:white; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; }
+
+  header { background:var(--green); color:white; padding:16px 20px; display:flex; align-items:center; gap:10px; box-shadow:0 2px 8px rgba(0,0,0,.15); }
+  header .icon { font-size:22px; }
+  header .title { flex:1; }
+  header .title h1 { font-size:17px; font-weight:700; }
+  header .title p { font-size:12px; opacity:.75; margin-top:2px; }
+  .nav a { color:rgba(255,255,255,.8); font-size:12px; text-decoration:none; }
+
+  .container { padding:20px 16px; max-width:600px; margin:0 auto; }
+
+  .menu-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .menu-card { background:var(--white); border-radius:14px; padding:20px 16px; box-shadow:0 1px 4px rgba(0,0,0,.07); text-decoration:none; color:var(--text); display:flex; flex-direction:column; align-items:center; gap:10px; transition:all .15s; border:1.5px solid transparent; }
+  .menu-card:active { border-color:var(--green-light); background:var(--green-pale); }
+  .menu-card .menu-icon { font-size:36px; }
+  .menu-card .menu-label { font-size:14px; font-weight:700; color:var(--text); }
+  .menu-card .menu-desc { font-size:11px; color:var(--muted); text-align:center; line-height:1.5; }
+
+  .section-title { font-size:12px; font-weight:700; color:var(--muted); letter-spacing:.08em; margin:20px 0 10px; }
+  .back-link { display:block; text-align:center; margin-top:24px; color:var(--muted); font-size:13px; text-decoration:none; }
+</style>
+</head>
+<body>
+
+<!-- PINロック -->
+<div class="lock-overlay" id="lockOverlay">
+  <div class="lock-icon">🔐</div>
+  <h2>管理者メニュー</h2>
+  <p>PINを入力してください</p>
+  <div class="pin-input">
+    <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="p0" oninput="onPin(0)">
+    <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="p1" oninput="onPin(1)">
+    <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="p2" oninput="onPin(2)">
+    <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="p3" oninput="onPin(3)">
+  </div>
+  <div class="pin-error" id="pinError"></div>
+  <button class="btn-unlock" onclick="checkPin()">確認</button>
+</div>
+
+<header>
+  <div class="icon">⚙️</div>
+  <div class="title"><h1>管理者メニュー</h1><p>清掃記録システム</p></div>
+  <div class="nav"><a href="cleaning_record.html">← 入力フォームへ</a></div>
+</header>
+
+<div class="container">
+  <div class="section-title">清掃記録</div>
+  <div class="menu-grid">
+    <a class="menu-card" href="records.html">
+      <div class="menu-icon">📋</div>
+      <div class="menu-label">記録一覧</div>
+      <div class="menu-desc">過去記録の検索・閲覧・修正・削除</div>
+    </a>
+    <a class="menu-card" href="stats.html">
+      <div class="menu-icon">📊</div>
+      <div class="menu-label">集計</div>
+      <div class="menu-desc">コース・物件・入力者別の集計</div>
+    </a>
+    <a class="menu-card" href="report.html">
+      <div class="menu-icon">📄</div>
+      <div class="menu-label">報告書作成</div>
+      <div class="menu-desc">物件ごとの月次報告書PDF</div>
+    </a>
+    <a class="menu-card" href="admin_properties.html">
+      <div class="menu-icon">🏢</div>
+      <div class="menu-label">物件管理</div>
+      <div class="menu-desc">コース・物件マスタの編集</div>
+    </a>
+  </div>
+
+  <div class="section-title">勤怠管理</div>
+  <div class="menu-grid">
+    <a class="menu-card" href="attendance_admin.html">
+      <div class="menu-icon">⏰</div>
+      <div class="menu-label">勤怠記録・集計</div>
+      <div class="menu-desc">全スタッフの記録確認・修正・集計</div>
+    </a>
+  </div>
+
+  <a class="back-link" href="cleaning_record.html">← 入力フォームに戻る</a>
+</div>
+
+<script>
+  const PIN = '1121';
+  const SESSION_KEY = 'admin_menu_unlocked';
+
+  function onPin(idx) {
+    const val = document.getElementById(`p${idx}`).value;
+    if (val && idx < 3) document.getElementById(`p${idx+1}`).focus();
+    if (idx === 3 && val) checkPin();
+  }
+
+  function checkPin() {
+    const pin = [0,1,2,3].map(i=>document.getElementById(`p${i}`).value).join('');
+    if (pin === PIN) {
+      sessionStorage.setItem(SESSION_KEY, 'true');
+      document.getElementById('lockOverlay').style.display = 'none';
+    } else {
+      document.getElementById('pinError').textContent = 'PINが正しくありません';
+      [0,1,2,3].forEach(i=>{ document.getElementById(`p${i}`).value=''; });
+      document.getElementById('p0').focus();
+      setTimeout(()=>document.getElementById('pinError').textContent='', 2000);
+    }
+  }
+
+  document.addEventListener('keydown', e=>{
+    if (e.key==='Enter' && sessionStorage.getItem(SESSION_KEY)!=='true') checkPin();
+  });
+
+  if (sessionStorage.getItem(SESSION_KEY)==='true') {
+    document.getElementById('lockOverlay').style.display = 'none';
+  } else {
+    document.getElementById('p0').focus();
+  }
+</script>
+
+<footer style="text-align:center;padding:20px 16px;font-size:11px;color:var(--muted,#6b7c6e);border-top:1px solid var(--border,#c5d9c7);margin-top:20px">
+  © 2026 TYS Co., Ltd. All rights reserved.
+</footer>
+</body>
+</html>
