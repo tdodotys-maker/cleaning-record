@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>シフト | 清掃記録システム</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --green:#2d6a4f; --green-light:#52b788; --green-pale:#d8f3dc;
+    --bg:#f8faf8; --text:#1b2e1e; --muted:#6b7c6e;
+    --border:#c5d9c7; --white:#ffffff; --red:#c0392b;
+    --orange:#e67e22; --blue:#2980b9; --blue-pale:#d6eaf8;
+  }
+  body { font-family:-apple-system,'Hiragino Sans','Yu Gothic',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; font-size:15px; }
+  header { background:var(--green); color:white; padding:16px 20px; display:flex; align-items:center; gap:10px; position:sticky; top:0; z-index:100; box-shadow:0 2px 8px rgba(0,0,0,.15); }
+  header .icon { font-size:22px; }
+  header .title { flex:1; }
+  header .title h1 { font-size:17px; font-weight:700; }
+  header .title p { font-size:12px; opacity:.75; margin-top:2px; }
+  .nav { display:flex; gap:10px; }
+  .nav a { color:rgba(255,255,255,.8); font-size:12px; text-decoration:none; white-space:nowrap; }
+  .container { padding:16px; max-width:700px; margin:0 auto; }
+  .page-tabs { display:flex; gap:0; margin-bottom:16px; border-radius:10px; overflow:hidden; border:1.5px solid var(--border); }
+  .page-tab { flex:1; padding:11px 4px; text-align:center; font-size:13px; font-weight:700; cursor:pointer; background:var(--white); color:var(--muted); border:none; }
+  .page-tab.active { background:var(--green); color:white; }
+  .page-tab:not(:last-child) { border-right:1.5px solid var(--border); }
+  .page { display:none; }
+  .page.active { display:block; }
+  .month-nav { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .month-nav button { padding:8px 16px; border:1.5px solid var(--border); border-radius:8px; background:var(--white); font-size:16px; cursor:pointer; color:var(--muted); }
+  .month-nav button:active { background:var(--green-pale); }
+  .month-label { flex:1; text-align:center; font-size:16px; font-weight:700; color:var(--green); }
+  .staff-bar { display:flex; align-items:center; gap:10px; background:var(--green-pale); border-radius:10px; padding:10px 14px; margin-bottom:14px; }
+  .staff-bar .sname { flex:1; font-size:14px; font-weight:700; color:var(--green); }
+  .staff-bar button { font-size:12px; color:var(--blue); cursor:pointer; background:none; border:none; text-decoration:underline; }
+  .calendar { background:var(--white); border-radius:12px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.07); margin-bottom:14px; }
+  .cal-header { display:grid; grid-template-columns:repeat(7,1fr); background:var(--green); }
+  .cal-header div { text-align:center; padding:8px 2px; font-size:12px; font-weight:700; color:white; }
+  .cal-header div:first-child { color:#ffcccc; }
+  .cal-header div:last-child { color:#cce0ff; }
+  .cal-body { display:grid; grid-template-columns:repeat(7,1fr); }
+  .cal-cell { border-right:1px solid #f0f4f0; border-bottom:1px solid #f0f4f0; min-height:64px; padding:4px; cursor:pointer; transition:background .1s; }
+  .cal-cell:nth-child(7n) { border-right:none; }
+  .cal-cell:hover { background:var(--green-pale); }
+  .cal-cell.empty { background:var(--bg); cursor:default; pointer-events:none; }
+  .cal-cell.today .day-num { background:var(--green); color:white; border-radius:50%; width:22px; height:22px; display:flex; align-items:center; justify-content:center; }
+  .day-num { font-size:12px; font-weight:700; margin-bottom:3px; width:22px; height:22px; display:flex; align-items:center; justify-content:center; }
+  .sun .day-num { color:var(--red); }
+  .sat .day-num { color:var(--blue); }
+  .req-badge { font-size:10px; padding:2px 5px; border-radius:6px; font-weight:700; margin-bottom:2px; text-align:center; }
+  .req-work { background:#d5f5e3; color:#1e8449; }
+  .req-off { background:#fde8e8; color:var(--red); }
+  .req-flex { background:#fef3cd; color:#856404; }
+  .shift-badge { font-size:10px; padding:2px 5px; border-radius:6px; font-weight:700; background:var(--blue-pale); color:var(--blue); text-align:center; margin-top:2px; }
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:200; align-items:flex-end; justify-content:center; }
+  .modal-overlay.show { display:flex; }
+  .modal { background:var(--white); border-radius:16px 16px 0 0; padding:20px 20px 40px; width:100%; max-width:600px; }
+  .modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+  .modal-header h2 { font-size:16px; font-weight:700; }
+  .btn-close { background:none; border:none; font-size:22px; cursor:pointer; color:var(--muted); }
+  .req-btns { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:14px; }
+  .req-btn { padding:14px 8px; border:2px solid var(--border); border-radius:10px; background:var(--white); font-size:13px; font-weight:700; cursor:pointer; text-align:center; }
+  .req-btn.sel-work { background:#d5f5e3; border-color:#1e8449; color:#1e8449; }
+  .req-btn.sel-off { background:#fde8e8; border-color:var(--red); color:var(--red); }
+  .req-btn.sel-flex { background:#fef3cd; border-color:var(--orange); color:var(--orange); }
+  .field { margin-bottom:12px; }
+  .field label { display:block; font-size:12px; color:var(--muted); font-weight:600; margin-bottom:5px; }
+  .field input { width:100%; padding:10px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit; }
+  .field input:focus { outline:none; border-color:var(--green-light); }
+  .modal-btns { display:flex; gap:8px; }
+  .btn-save { flex:1; padding:12px; background:var(--green); color:white; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; }
+  .btn-del { padding:12px 16px; background:#fde8e8; color:var(--red); border:1.5px solid #f5c6c6; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; }
+  .name-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:300; align-items:center; justify-content:center; padding:20px; }
+  .name-modal.show { display:flex; }
+  .name-box { background:var(--white); border-radius:16px; padding:24px; width:100%; max-width:360px; }
+  .name-box h2 { font-size:16px; font-weight:700; color:var(--green); margin-bottom:14px; }
+  .name-box input { width:100%; padding:12px; border:1.5px solid var(--border); border-radius:8px; font-size:15px; font-family:inherit; margin-bottom:12px; }
+  .name-box input:focus { outline:none; border-color:var(--green-light); }
+  .btn-name-save { width:100%; padding:12px; background:var(--green); color:white; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; }
+  .shift-list { display:flex; flex-direction:column; gap:8px; }
+  .shift-item { background:var(--white); border-radius:10px; padding:12px 14px; box-shadow:0 1px 4px rgba(0,0,0,.07); border-left:4px solid var(--blue); }
+  .shift-item .si-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+  .shift-item .si-date { font-size:13px; font-weight:700; }
+  .shift-item .si-course { font-size:12px; background:var(--blue-pale); color:var(--blue); padding:2px 8px; border-radius:8px; font-weight:600; }
+  .shift-item .si-note { font-size:12px; color:var(--muted); margin-top:3px; }
+  .hint { background:var(--white); border-radius:10px; padding:10px 12px; font-size:12px; color:var(--muted); line-height:1.8; margin-bottom:12px; box-shadow:0 1px 4px rgba(0,0,0,.07); }
+  .empty { text-align:center; padding:30px; color:var(--muted); font-size:14px; }
+  .loading { text-align:center; padding:30px; color:var(--muted); }
+  .spinner { display:inline-block; width:22px; height:22px; border:3px solid var(--border); border-top-color:var(--green); border-radius:50%; animation:spin .8s linear infinite; vertical-align:middle; margin-right:6px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  footer { text-align:center; padding:20px 16px; font-size:11px; color:var(--muted); border-top:1px solid var(--border); margin-top:20px; }
+</style>
+</head>
+<body>
+
+<div class="name-modal" id="nameModal">
+  <div class="name-box">
+    <h2>名前を入力してください</h2>
+    <input type="text" id="nameInput" placeholder="氏名を入力">
+    <button class="btn-name-save" onclick="saveName()">保存</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="reqModal" onclick="closeReqModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="reqModalTitle">希望を入力</h2>
+      <button class="btn-close" onclick="closeReqModalDirect()">✕</button>
+    </div>
+    <div class="req-btns" style="grid-template-columns:1fr">
+      <button class="req-btn" id="btn-off" onclick="selectReq('休み希望')">❌ 休み希望</button>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-save" onclick="saveReq()">保存</button>
+      <button class="btn-del" id="btnDelReq" onclick="deleteReq()" style="display:none">削除</button>
+    </div>
+  </div>
+</div>
+
+<header>
+  <div class="icon">📅</div>
+  <div class="title"><h1>シフト</h1><p>希望入力・確定シフト確認</p></div>
+  <div class="nav"><a href="cleaning_record.html">🧹 清掃記録</a></div>
+</header>
+
+<div class="container">
+  <div class="page-tabs">
+    <button class="page-tab active" onclick="switchPage('request',this)">希望入力</button>
+    <button class="page-tab" onclick="switchPage('confirmed',this)">シフト</button>
+  </div>
+
+  <div class="page active" id="page-request">
+    <div class="staff-bar">
+      <div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:2px">入力者</div>
+        <div class="sname" id="staffDisplay">未設定</div>
+      </div>
+      <button onclick="showNameModal()">変更</button>
+    </div>
+    <div class="month-nav">
+      <button onclick="prevMonth()">◀</button>
+      <div class="month-label" id="monthLabel"></div>
+      <button onclick="nextMonth()">▶</button>
+    </div>
+    <div class="hint">休みを希望する日付をタップしてください。</div>
+    <div class="calendar" id="reqCalendar"></div>
+  </div>
+
+  <div class="page" id="page-confirmed">
+    <div class="staff-bar">
+      <div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:2px">表示中</div>
+        <div class="sname" id="staffDisplay2">未設定</div>
+      </div>
+      <button onclick="showNameModal()">変更</button>
+    </div>
+    <div class="month-nav">
+      <button onclick="prevMonth2()">◀</button>
+      <div class="month-label" id="monthLabel2"></div>
+      <button onclick="nextMonth2()">▶</button>
+    </div>
+    <div id="confirmedArea"><div class="loading"><span class="spinner"></span>読み込み中…</div></div>
+  </div>
+</div>
+
+<footer>© 2026 TYS Co., Ltd. All rights reserved.</footer>
+
+<script>
+  const SUPABASE_URL = 'https://kcgycrzqmjdfxctmllaf.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_gIG_84rtMPMZCAsnStcj4w_yKYdJWCm';
+  const SB_H = { 'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY };
+  const STAFF_KEY = 'shift_staff_name';
+
+  let staffName = localStorage.getItem(STAFF_KEY) || '';
+  let reqYear = new Date().getFullYear();
+  let reqMonth = new Date().getMonth() + 1;
+  let confYear = new Date().getFullYear();
+  let confMonth = new Date().getMonth() + 1;
+  let reqData = {};
+  let selectedDate = null;
+  let selectedReqType = null;
+
+  async function sbGet(t,q=''){const r=await fetch(`${SUPABASE_URL}/rest/v1/${t}${q}`,{headers:SB_H});return r.json();}
+  async function sbInsert(t,d){const r=await fetch(`${SUPABASE_URL}/rest/v1/${t}`,{method:'POST',headers:{...SB_H,'Prefer':'return=minimal'},body:JSON.stringify(d)});return r.ok;}
+  async function sbPatch(t,q,d){const r=await fetch(`${SUPABASE_URL}/rest/v1/${t}${q}`,{method:'PATCH',headers:{...SB_H,'Prefer':'return=minimal'},body:JSON.stringify(d)});return r.ok;}
+  async function sbDelete(t,q){const r=await fetch(`${SUPABASE_URL}/rest/v1/${t}${q}`,{method:'DELETE',headers:SB_H});return r.ok;}
+  function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  function switchPage(name,el){
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.page-tab').forEach(t=>t.classList.remove('active'));
+    document.getElementById('page-'+name).classList.add('active');
+    el.classList.add('active');
+    if(name==='confirmed') loadConfirmed();
+  }
+
+  // 月移動（希望入力）
+  function prevMonth(){ reqMonth--; if(reqMonth<1){reqMonth=12;reqYear--;} document.getElementById('monthLabel').textContent=reqYear+'年'+reqMonth+'月'; renderCalendar(); loadReqData(); }
+  function nextMonth(){ reqMonth++; if(reqMonth>12){reqMonth=1;reqYear++;} document.getElementById('monthLabel').textContent=reqYear+'年'+reqMonth+'月'; renderCalendar(); loadReqData(); }
+  // 月移動（確定シフト）
+  function prevMonth2(){ confMonth--; if(confMonth<1){confMonth=12;confYear--;} loadConfirmed(); }
+  function nextMonth2(){ confMonth++; if(confMonth>12){confMonth=1;confYear++;} loadConfirmed(); }
+
+  function showNameModal(){ document.getElementById('nameModal').classList.add('show'); document.getElementById('nameInput').value=staffName; document.getElementById('nameInput').focus(); }
+  function saveName(){
+    const n=document.getElementById('nameInput').value.trim();
+    if(!n){alert('名前を入力してください');return;}
+    staffName=n; localStorage.setItem(STAFF_KEY,n);
+    document.getElementById('staffDisplay').textContent=n;
+    document.getElementById('staffDisplay2').textContent=n;
+    document.getElementById('nameModal').classList.remove('show');
+    loadReqData();
+  }
+  document.getElementById('nameInput').addEventListener('keydown',e=>{if(e.key==='Enter')saveName();});
+
+  async function loadReqData(){
+    if(!staffName)return;
+    const ym=`${reqYear}-${String(reqMonth).padStart(2,'0')}`;
+    const lastDay=new Date(reqYear,reqMonth,0).getDate();
+    document.getElementById('monthLabel').textContent=`${reqYear}年${reqMonth}月`;
+    const rows=await sbGet('shift_requests',`?staff_name=eq.${encodeURIComponent(staffName)}&work_date=gte.${ym}-01&work_date=lte.${ym}-${String(lastDay).padStart(2,'0')}`);
+    reqData={};
+    rows.forEach(r=>{reqData[r.work_date]=r;});
+    renderCalendar();
+  }
+
+  function renderCalendar(){ 
+    const firstDow=new Date(reqYear,reqMonth-1,1).getDay(); // ローカル時間で計算
+    const lastDate=new Date(reqYear,reqMonth,0).getDate();
+    const _td=new Date(); const todayStr=`${_td.getFullYear()}-${String(_td.getMonth()+1).padStart(2,'0')}-${String(_td.getDate()).padStart(2,'0')}`;
+    const DAYS=['日','月','火','水','木','金','土'];
+    let h=`<div class="cal-header">${DAYS.map(d=>`<div>${d}</div>`).join('')}</div><div class="cal-body">`;
+    for(let i=0;i<firstDow;i++) h+=`<div class="cal-cell empty"></div>`;
+    for(let d=1;d<=lastDate;d++){
+      const ds=`${reqYear}-${String(reqMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const dow=(firstDow+d-1)%7; // firstDowから計算するので正確
+      const cls=(ds===todayStr?'today ':'')+( dow===0?'sun':dow===6?'sat':'');
+      const req=reqData[ds];
+      let badge='';
+      if(req){
+        const bc=req.request_type==='出勤希望'?'req-work':req.request_type==='休み希望'?'req-off':'req-flex';
+        const ic=req.request_type==='出勤希望'?'✅':req.request_type==='休み希望'?'❌':'🔄';
+        badge=`<div class="req-badge ${bc}">${ic}</div>`;
+        if(req.note) badge+=`<div style="font-size:9px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(req.note)}</div>`;
+      }
+      h+=`<div class="cal-cell ${cls}" onclick="openReqModal('${ds}')"><div class="day-num">${d}</div>${badge}</div>`;
+    }
+    h+='</div>';
+    document.getElementById('reqCalendar').innerHTML=h;
+  }
+
+  function openReqModal(ds){ 
+    selectedDate=ds;
+    const [y,m,d]=ds.split('-');
+    const [_y,_m,_d]=ds.split('-').map(Number);
+    const dow=['日','月','火','水','木','金','土'][new Date(_y,_m-1,_d).getDay()];
+    document.getElementById('reqModalTitle').textContent=`${parseInt(m)}/${parseInt(d)}（${dow}）`;
+    selectedReqType=null;
+    document.querySelectorAll('.req-btn').forEach(b=>b.className='req-btn');
+    
+    const ex=reqData[ds];
+    document.getElementById('btnDelReq').style.display=ex?'block':'none';
+    if(ex){selectReq(ex.request_type);}
+    document.getElementById('reqModal').classList.add('show');
+  }
+
+  function selectReq(t){
+    selectedReqType=t;
+    document.getElementById('btn-off').className='req-btn'+(t==='休み希望'?' sel-off':'');
+  }
+
+  async function saveReq(){
+    if(!selectedReqType){alert('希望を選択してください');return;}
+    if(!selectedDate){alert('日付が選択されていません');return;}
+    if(!staffName){alert('名前を設定してください');showNameModal();return;}
+    try {
+      const ex=reqData[selectedDate];
+      if(ex) {
+        await sbPatch('shift_requests',`?id=eq.${ex.id}`,{request_type:selectedReqType,note:''});
+      } else {
+        await sbInsert('shift_requests',{staff_name:staffName,work_date:selectedDate,request_type:selectedReqType,note:''});
+      }
+      closeReqModalDirect();
+      await loadReqData();
+    } catch(e) {
+      alert('保存に失敗しました: ' + e.message);
+    }
+  }
+
+  async function deleteReq(){
+    const ex=reqData[selectedDate];
+    if(!ex)return;
+    if(!confirm('この希望を削除しますか？'))return;
+    await sbDelete('shift_requests',`?id=eq.${ex.id}`);
+    closeReqModalDirect();
+    loadReqData();
+  }
+
+  function closeReqModal(e){if(e.target===document.getElementById('reqModal'))closeReqModalDirect();}
+  function closeReqModalDirect(){document.getElementById('reqModal').classList.remove('show');}
+
+  async function loadConfirmed(){
+    const ym=`${confYear}-${String(confMonth).padStart(2,'0')}`;
+    const totalDays=new Date(confYear,confMonth,0).getDate();
+    document.getElementById('monthLabel2').textContent=`${confYear}年${confMonth}月`;
+    document.getElementById('confirmedArea').innerHTML=`<div class="loading"><span class="spinner"></span>読み込み中…</div>`;
+
+    // シフトと休み希望を並行取得
+    const [shiftRows, reqRows, settingRows]=await Promise.all([
+      sbGet('shifts',`?work_date=gte.${ym}-01&work_date=lte.${ym}-${String(totalDays).padStart(2,'0')}&order=work_date.asc`),
+      sbGet('shift_requests',`?work_date=gte.${ym}-01&work_date=lte.${ym}-${String(totalDays).padStart(2,'0')}&order=staff_name.asc`),
+      sbGet('settings',`?key=eq.shift_staff_order`)
+    ]);
+
+    // 並び順
+    let staffOrder=[];
+    try{ if(settingRows.length) staffOrder=JSON.parse(settingRows[0].value); }catch(e){}
+
+    // date→コース[]
+    const courseMap={};
+    // date→staff set（⭕出勤）
+    const workMap={};
+    shiftRows.forEach(r=>{
+      if(r.course_code==='__work__'&&r.staff_name){
+        if(!workMap[r.work_date])workMap[r.work_date]=new Set();
+        workMap[r.work_date].add(r.staff_name);
+      } else if(r.course_code!=='__work__'){
+        if(!courseMap[r.work_date])courseMap[r.work_date]=[];
+        courseMap[r.work_date].push(r.course_name||r.course_code||'');
+      }
+    });
+
+    // date→staff set（休み希望）
+    const offMap={};
+    reqRows.forEach(r=>{
+      if(r.request_type==='休み希望'){
+        if(!offMap[r.work_date])offMap[r.work_date]=new Set();
+        offMap[r.work_date].add(r.staff_name);
+      }
+    });
+
+    // 全スタッフリスト（並び順適用）
+    const allStaff=[...new Set(reqRows.map(r=>r.staff_name).filter(Boolean))];
+    const orderedStaff=staffOrder.length
+      ? staffOrder.filter(s=>allStaff.includes(s)).concat(allStaff.filter(s=>!staffOrder.includes(s)))
+      : allStaff.sort();
+
+    const area=document.getElementById('confirmedArea');
+    if(!orderedStaff.length&&!shiftRows.length){area.innerHTML=`<div class="empty">データがありません</div>`;return;}
+
+    const DAYS2=['日','月','火','水','木','金','土'];
+    const HOLIDAYS=new Set(['2026-01-01','2026-01-12','2026-02-11','2026-02-23','2026-03-20','2026-04-29','2026-05-03','2026-05-04','2026-05-05','2026-05-06','2026-07-20','2026-08-11','2026-09-21','2026-09-22','2026-09-23','2026-10-12','2026-11-03','2026-11-23','2026-12-23']);
+    const n=new Date(); const todayS=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
+
+    let html=`<div style="overflow-x:auto;background:white;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+    <table style="border-collapse:collapse;font-size:12px;min-width:100%">
+    <thead><tr>
+      <th style="background:var(--green);color:white;padding:7px 10px;text-align:left;white-space:nowrap;position:sticky;left:0;z-index:11;min-width:80px">日付</th>
+      ${orderedStaff.map(s=>`<th style="background:${s===staffName?'#1e5c3a':'var(--green)'};color:white;padding:7px 8px;text-align:center;white-space:nowrap;">${esc(s)}</th>`).join('')}
+      <th style="background:#1a5276;color:white;padding:7px 8px;text-align:center;white-space:nowrap;min-width:70px">コース</th>
+    </tr></thead><tbody>`;
+
+    for(let d=1;d<=totalDays;d++){
+      const ds=`${ym}-${String(d).padStart(2,'0')}`;
+      const dow=new Date(confYear,confMonth-1,d).getDay();
+      const hol=HOLIDAYS.has(ds);
+      const isToday=ds===todayS;
+      const bgBase=isToday?'#e8f8ef':hol||dow===0?'#fff5f5':dow===6?'#f0f5ff':'white';
+      const dateCls=hol||dow===0?'color:var(--red)':dow===6?'color:var(--blue)':'';
+      const cs=(courseMap[ds]||[]).join('／');
+      html+=`<tr style="background:${bgBase}">
+        <td style="position:sticky;left:0;background:${bgBase};font-weight:700;padding:6px 10px;white-space:nowrap;border-right:2px solid var(--border);border-bottom:1px solid #f0f4f0;${dateCls}">${d}（${DAYS2[dow]}）${hol?'<span style="color:var(--red);font-size:9px"> 祝</span>':''}</td>
+        ${orderedStaff.map(s=>{
+          const isWork=workMap[ds]&&workMap[ds].has(s);
+          const isOff=offMap[ds]&&offMap[ds].has(s);
+          const isMe=s===staffName;
+          let icon='', bg='';
+          if(isWork){ icon=`<span style="font-size:14px${isMe?';font-weight:900':''}">⭕</span>`; bg='background:#d5f5e3;'; }
+          else if(isOff){ icon=`<span style="color:#555;font-size:13px">✕</span>`; bg='background:#f5f5f5;'; }
+          return `<td style="text-align:center;border-bottom:1px solid #f0f4f0;padding:4px;${bg}">${icon}</td>`;
+        }).join('')}
+        <td style="padding:4px 8px;border-bottom:1px solid #f0f4f0;font-size:11px;color:var(--blue);font-weight:600">${esc(cs)}</td>
+      </tr>`;
+    }
+    html+=`</tbody></table></div>`;
+    area.innerHTML=html;
+  }
+
+  // 初期化
+  if(!staffName){
+    showNameModal();
+  } else {
+    document.getElementById('staffDisplay').textContent=staffName;
+    document.getElementById('staffDisplay2').textContent=staffName;
+    loadReqData();
+  }
+  document.getElementById('monthLabel').textContent=`${reqYear}年${reqMonth}月`;
+  document.getElementById('monthLabel2').textContent=`${confYear}年${confMonth}月`;
+</script>
+</body>
+</html>
