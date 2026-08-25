@@ -83,8 +83,6 @@
   <div class="icon">📋</div>
   <div><h1>記録一覧</h1><p>清掃記録の検索・閲覧</p></div>
   <div class="header-right">
-    <a class="header-link" href="stats.html">📊 集計</a>
-    
     <a class="header-link" href="cleaning_record.html">🧹 入力</a>
   </div>
 </header>
@@ -135,7 +133,7 @@
     document.getElementById('listArea').innerHTML=`<div class="loading"><div class="spinner"></div><br>データを読み込み中…</div>`;
     document.getElementById('countText').textContent='読み込み中…';
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/cleaning_records?order=created_at.desc`, { headers:SB_H });
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/cleaning_records?deleted=is.false&order=created_at.desc`, { headers:SB_H });
       allRecords = await res.json();
       // コースフィルター
       const courses = await fetch(`${SUPABASE_URL}/rest/v1/courses?order=sort_order.asc`, { headers:SB_H }).then(r=>r.json());
@@ -327,7 +325,9 @@
     const r = allRecords[currentModalIdx];
     if (!confirm(`「${r.property_name}」${r.cleaning_date}の記録を削除しますか？`)) return;
     const res = await fetch(`${SUPABASE_URL}/rest/v1/cleaning_records?id=eq.${r.id}`, {
-      method:'DELETE', headers:SB_H
+      method:'PATCH',
+      headers:{...SB_H,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({deleted:true})
     });
     if (res.ok) {
       allRecords.splice(currentModalIdx,1);

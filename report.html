@@ -165,7 +165,7 @@
       const from = `${month}-01`;
       const to = `${month}-31`;
       const records = await sbGet('cleaning_records',
-        `?property_code=eq.${prop.code}&cleaning_date=gte.${from}&cleaning_date=lte.${to}&order=cleaning_date.asc`);
+        `?property_code=eq.${prop.code}&cleaning_date=gte.${from}&cleaning_date=lte.${to}&deleted=is.false&order=cleaning_date.asc`);
       _records = records;
       renderPreview(prop, month, records);
     } catch(e) {

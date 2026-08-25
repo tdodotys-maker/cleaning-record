@@ -108,7 +108,7 @@
   async function loadRecords() {
     document.getElementById('statsArea').innerHTML=`<div class="loading"><div class="spinner"></div></div>`;
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/cleaning_records?order=cleaning_date.desc`, { headers:SB_H });
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/cleaning_records?deleted=is.false&order=cleaning_date.desc`, { headers:SB_H });
       allRecords = await res.json();
       applyStats();
     } catch(e) { document.getElementById('statsArea').innerHTML=`<div class="empty">データの取得に失敗しました</div>`; }

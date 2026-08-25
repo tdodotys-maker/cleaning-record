@@ -143,6 +143,10 @@
         <div style="font-size:11px;color:var(--muted);margin-top:4px">「記憶」を押すとこの端末に保存されます</div>
       </div>
 
+      <div class="field" style="text-align:right;padding-bottom:0">
+        <button type="button" onclick="clearForm()" style="padding:7px 14px;background:var(--white);border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer">🗑 入力内容のクリア</button>
+      </div>
+
       <div class="field">
         <label>コース<span class="req">*</span></label>
         <select id="courseName" onchange="onCourseChange()">
@@ -449,7 +453,7 @@
       renderPhotoPreview();
       // 特記事項があればメール通知（GAS経由）
       if (notes && notes.trim()) {
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbzdI8YT_zrDKzgTV_FqmCxdZn5TdwVHXLMAUcgjvIZ2_boKVdhPEafBjf_8LslMHOXn/exec';
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbyxfQLeZuRGy-ArrBy5-kbdDXd44YZ5YZJ4L6wWyZ84-Bpc5k10PpJKp0292G5fx8J-2w/exec';
         const _data = encodeURIComponent(JSON.stringify({
           action:'sendMail', courseCode:course.code, course:course.name,
           propertyCode, property:propertyName, date, weather, start, end, notes
@@ -558,6 +562,114 @@
     return urls;
   }
 
+  // ===== 自動保存・復元 =====
+  const DRAFT_KEY = 'cleaning_draft';
+
+  function saveDraft() {
+    const draft = {
+      courseIdx: document.getElementById('courseName').value,
+      propRaw: document.getElementById('propertyName').value,
+      date: document.getElementById('cleaningDate').value,
+      weather: document.getElementById('weather').value,
+      startTime: document.getElementById('startTime').value,
+      endTime: document.getElementById('endTime').value,
+      checks: [...document.querySelectorAll('input[name="check"]:checked')].map(c=>c.value),
+      specials: [...document.querySelectorAll('input[name="special"]:checked')].map(c=>c.value),
+      notes: document.getElementById('notes').value,
+    };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  }
+
+  async function restoreDraft() {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return;
+    try {
+      const draft = JSON.parse(raw);
+      // 日付
+      if (draft.date) document.getElementById('cleaningDate').value = draft.date;
+      // 天候
+      if (draft.weather) {
+        document.getElementById('weather').value = draft.weather;
+        document.querySelectorAll('.weather-btn').forEach(btn => {
+          if (btn.dataset.val === draft.weather) btn.classList.add('active');
+        });
+      }
+      // 時刻
+      if (draft.startTime) document.getElementById('startTime').value = draft.startTime;
+      if (draft.endTime) document.getElementById('endTime').value = draft.endTime;
+      // メモ
+      if (draft.notes) document.getElementById('notes').value = draft.notes;
+      // コース（コース一覧読み込み後に復元）
+      if (draft.courseIdx) {
+        document.getElementById('courseName').value = draft.courseIdx;
+        onCourseChange();
+        // 物件
+        if (draft.propRaw) {
+          await new Promise(r => setTimeout(r, 100));
+          document.getElementById('propertyName').value = draft.propRaw;
+          onPropertyChange();
+        }
+      }
+      // チェック項目
+      document.querySelectorAll('input[name="check"]').forEach(cb => {
+        cb.checked = (draft.checks||[]).includes(cb.value);
+      });
+      document.querySelectorAll('input[name="special"]').forEach(cb => {
+        cb.checked = (draft.specials||[]).includes(cb.value);
+      });
+    } catch(e) {}
+  }
+
+  function clearDraft() {
+    localStorage.removeItem(DRAFT_KEY);
+  }
+
+  // 入力のたびに自動保存
+  function bindAutoSave() {
+    const ids = ['courseName','propertyName','cleaningDate','startTime','endTime','notes'];
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('change', saveDraft);
+    });
+    document.querySelectorAll('input[name="check"], input[name="special"]').forEach(cb => {
+      cb.addEventListener('change', saveDraft);
+    });
+    document.querySelectorAll('.weather-btn').forEach(btn => {
+      btn.addEventListener('click', saveDraft);
+    });
+    document.getElementById('notes').addEventListener('input', saveDraft);
+  }
+
+  function clearForm() {
+    if (!confirm('入力内容をクリアしますか？（入力者は保持されます）')) return;
+    // コース・物件
+    document.getElementById('courseName').value = '';
+    document.getElementById('propertyName').innerHTML = '<option value="">まずコースを選択してください</option>';
+    document.getElementById('propertyName').disabled = true;
+    // 日付（今日に戻す）
+    document.getElementById('cleaningDate').value = today;
+    // 天候
+    document.getElementById('weather').value = '';
+    document.querySelectorAll('.weather-btn').forEach(b => b.classList.remove('active'));
+    // 時刻
+    document.getElementById('startTime').value = '';
+    document.getElementById('endTime').value = '';
+    // チェック項目
+    document.querySelectorAll('input[name="check"], input[name="special"]').forEach(cb => cb.checked = false);
+    // 特記事項
+    document.getElementById('notes').value = '';
+    // 写真
+    _selectedPhotos = [];
+    renderPhotoPreview();
+    // 当月記録リセット
+    document.getElementById('monthlyList').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">物件を選択すると表示されます</div>';
+    document.getElementById('monthlyCount').textContent = '';
+    document.getElementById('monthlyPropName').textContent = '';
+    // ドラフト削除
+    clearDraft();
+    window.scrollTo(0, 0);
+  }
+
   function saveStaffName() {
     const name = document.getElementById('staffName').value.trim();
     if (!name) { alert('氏名を入力してください'); return; }
@@ -569,7 +681,21 @@
   const savedStaff = localStorage.getItem('staff_name');
   if (savedStaff) document.getElementById('staffName').value = savedStaff;
 
-  buildCourseSelect();
+  async function initForm() {
+    await buildCourseSelect();
+    await restoreDraft();
+    bindAutoSave();
+    // 復元データがあれば通知
+    if (localStorage.getItem(DRAFT_KEY)) {
+      const banner = document.createElement('div');
+      banner.textContent = '📝 前回の入力内容を復元しました';
+      banner.style.cssText = 'background:#d8f3dc;color:#2d6a4f;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:10px;text-align:center';
+      const container = document.querySelector('.container');
+      container.insertBefore(banner, container.firstChild);
+      setTimeout(()=>banner.remove(), 4000);
+    }
+  }
+  initForm();
 
   function onPropertyChange() {
     const propRaw = document.getElementById('propertyName').value;
@@ -699,7 +825,9 @@
     const r = _monthlyRecords[_editIdx];
     if (!confirm(`${r.property_name} ${r.cleaning_date}の記録を削除しますか？`)) return;
     const res = await fetch(`${SUPABASE_URL}/rest/v1/cleaning_records?id=eq.${r.id}`, {
-      method:'DELETE', headers:SB_HEADERS
+      method:'PATCH',
+      headers:{...SB_HEADERS,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({deleted:true})
     });
     if (res.ok) {
       closeEditModalDirect();
