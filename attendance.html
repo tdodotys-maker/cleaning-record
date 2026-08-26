@@ -145,8 +145,8 @@
   <div class="icon">⏰</div>
   <div class="title"><h1>勤怠管理</h1><p>出退勤の記録・確認</p></div>
   <div class="nav">
-    <a href="attendance_admin.html">⚙️</a>
     <a href="cleaning_record.html">🧹 清掃記録</a>
+    <a href="attendance_admin.html">⚙️</a>
   </div>
 </header>
 
@@ -182,6 +182,7 @@
       <div style="display:flex;align-items:center;gap:10px">
         <div style="font-size:12px;color:var(--muted);font-weight:600;flex-shrink:0">打刻日</div>
         <input type="date" id="clockDate" onchange="onDateChange()" style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit">
+        <script>document.currentScript.previousElementSibling.value=(function(){const n=new Date(),o=9*60,j=new Date(n.getTime()+o*60000);return j.toISOString().split('T')[0];})();</script>
         <button onclick="setToday()" style="padding:8px 12px;background:var(--blue-pale);border:1.5px solid var(--border);border-radius:8px;font-size:12px;color:var(--blue);font-weight:700;cursor:pointer;white-space:nowrap">今日</button>
       </div>
     </div>
@@ -202,7 +203,7 @@
       <button class="clock-btn btn-in" id="btnIn" onclick="clockIn()">
         <span class="icon">🟢</span>
         <span class="label">出勤</span>
-        <span class="time" id="inTime"></span>
+        <span class="time" id="inTime">9:00</span>
       </button>
       <button class="clock-btn btn-out" id="btnOut" onclick="clockOut()">
         <span class="icon">🔴</span>
@@ -228,7 +229,7 @@
       <h2>運転</h2>
       <label style="display:flex;align-items:center;gap:10px;padding:4px 0;cursor:pointer">
         <input type="checkbox" id="drivingCheck" style="width:22px;height:22px;accent-color:var(--blue);flex-shrink:0">
-        <span style="font-size:14px">運転あり</span>
+        <span style="font-size:14px">運転</span>
       </label>
     </div>
 
@@ -266,6 +267,12 @@
   const STAFF_KEY = 'attendance_staff_name';
 
   let staffName = localStorage.getItem(STAFF_KEY) || '';
+
+  // 端末に保存済みの入力者名を即時反映
+  if (staffName) {
+    const el = document.getElementById('staffDisplay');
+    if (el) el.textContent = staffName;
+  }
   let todayRecord = null;
   let allRecords = [];
   let editIdx = -1;
@@ -347,6 +354,8 @@
       const inT = new Date(todayRecord.clock_in);
       const inH = inT.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Tokyo'});
       document.getElementById('manualIn').value = inH;
+    } else {
+      document.getElementById('manualIn').value = '09:00';
     }
     if (todayRecord?.clock_out) {
       const outT = new Date(todayRecord.clock_out);
@@ -433,7 +442,9 @@
     if (todayRecord?.clock_in) { alert('この日はすでに出勤済みです'); return; }
     const workDate = getClockDate();
     const memo = document.getElementById('memoInput').value;
-    const rows = await sbInsert('attendance', { staff_name:staffName, work_date:workDate, clock_in:nowOnDate(workDate), memo });
+    const driving = document.getElementById('drivingCheck').checked;
+    const clockInTime = workDate + 'T09:00:00+09:00';
+    const rows = await sbInsert('attendance', { staff_name:staffName, work_date:workDate, clock_in:clockInTime, memo, driving });
     todayRecord = rows[0];
     showMessage('出勤を記録しました ✓');
     renderClockButtons();
@@ -541,8 +552,8 @@
       }
       return `<div class="record-card ${!outT?'no-out':''}" onclick="openEdit(${i})">
         <div class="rc-top">
-          <div class="rc-staff">${esc(r.staff_name||'—')}</div>
-          <div class="rc-date">${esc(r.work_date||'')}</div>
+          <div class="rc-staff" style="font-size:16px">${esc(r.work_date||'—')}</div>
+          <div class="rc-date" style="display:none">${esc(r.work_date||'')}</div>
         </div>
         <div class="rc-times">
           ${inT ? `<span class="rc-tag tag-in">出勤 ${inT}</span>` : ''}
@@ -613,16 +624,21 @@
   // ===== 初期化 =====
   const now = new Date();
   const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  document.getElementById('filterMonth').value = ym;
-  document.getElementById('statsMonth').value = ym;
+  const filterMonthEl = document.getElementById('filterMonth');
+  const statsMonthEl = document.getElementById('statsMonth');
+  if (filterMonthEl) filterMonthEl.value = ym;
+  if (statsMonthEl) statsMonthEl.value = ym;
 
-  document.getElementById('clockDate').value = todayJST();
+  // 打刻日を当日にセット（loadTodayRecordより前に実行）
+  const clockDateEl = document.getElementById('clockDate');
+  if (clockDateEl) clockDateEl.value = todayJST();
 
   if (!staffName) {
     showNameModal();
   } else {
     document.getElementById('staffDisplay').textContent = staffName;
-    loadTodayRecord();
+    // clockDateセット後に当日記録を読み込む
+    setTimeout(() => loadTodayRecord(), 0);
   }
 </script>
 
