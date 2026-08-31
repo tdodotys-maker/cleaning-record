@@ -49,6 +49,27 @@
   .modal-val { font-size:14px; flex:1; line-height:1.6; }
   .modal-notes { background:#fffbf0; border-radius:8px; padding:10px 12px; border-left:3px solid #f39c12; font-size:14px; line-height:1.6; }
   .empty { text-align:center; padding:40px 20px; color:var(--muted); font-size:14px; }
+  .page-tabs { display:flex; gap:0; margin-bottom:14px; border-radius:10px; overflow:hidden; border:1.5px solid var(--border); }
+  .page-tab { flex:1; padding:10px 4px; text-align:center; font-size:13px; font-weight:700; cursor:pointer; background:var(--white); color:var(--muted); border:none; }
+  .page-tab.active { background:var(--green); color:white; }
+  .page-tab:not(:last-child) { border-right:1.5px solid var(--border); }
+  .page { display:none; }
+  .page.active { display:block; }
+  /* マトリクス */
+  .matrix-wrap { background:var(--white); border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,.07); }
+  .matrix-wrap table { border-collapse:collapse; font-size:11px; min-width:100%; }
+  .matrix-wrap th { background:var(--green); color:white; padding:6px 6px; text-align:center; white-space:nowrap; position:sticky; top:0; z-index:10; }
+  .matrix-wrap th:first-child { left:0; z-index:12; text-align:left; min-width:90px; }
+  .matrix-wrap td { border:1px solid #f0f4f0; padding:4px 4px; text-align:center; vertical-align:middle; }
+  .m-date { position:sticky; left:0; background:var(--white); font-weight:700; padding:5px 8px; white-space:nowrap; z-index:5; border-right:2px solid var(--border) !important; font-size:11px; }
+  .m-date.sun,.m-date.hol { color:var(--red); background:#fff5f5; }
+  .m-date.sat { color:var(--blue); background:#f0f5ff; }
+  .m-date.today-r { background:#e8f8ef !important; }
+  .m-row.row-sun { background:#fff5f5; }
+  .m-row.row-sat { background:#f0f5ff; }
+  .m-row.row-hol { background:#fff0f5; }
+  .m-row.today-r { background:#e8f8ef !important; }
+  .m-check { color:var(--green); font-size:14px; font-weight:700; }
   .photo-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:8px; }
   .photo-thumb { aspect-ratio:1; border-radius:8px; overflow:hidden; background:#f0f0f0; cursor:pointer; }
   .photo-thumb img { width:100%; height:100%; object-fit:cover; }
@@ -87,6 +108,12 @@
   </div>
 </header>
 <div class="container">
+  <div class="page-tabs">
+    <button class="page-tab active" onclick="switchTab('list',this)">記録一覧</button>
+    <button class="page-tab" onclick="switchTab('matrix',this)">マトリクス</button>
+  </div>
+
+  <div class="page active" id="page-list">
   <div class="filter-box">
     <div class="filter-row"><input type="text" id="searchText" placeholder="🔍 物件名・特記事項で検索" oninput="applyFilter()"></div>
     <div class="filter-row">
@@ -105,6 +132,21 @@
     <button class="btn-reload" onclick="loadRecords()">🔄 再読み込み</button>
   </div>
   <div id="listArea"><div class="loading"><div class="spinner"></div><br>データを読み込み中…</div></div>
+  </div><!-- /page-list -->
+
+  <!-- マトリクスページ -->
+  <div class="page" id="page-matrix">
+    <div class="filter-box" style="margin-bottom:12px">
+      <input type="month" id="matrixMonth" onchange="loadMatrix()">
+      <select id="matrixCourse" onchange="loadMatrix()"><option value="">すべてのコース</option></select>
+    </div>
+    <div class="count-bar">
+      <span id="matrixCount"></span>
+      <button class="btn-reload" onclick="loadMatrix()">🔄 再読み込み</button>
+    </div>
+    <div id="matrixArea" style="overflow:auto;-webkit-overflow-scrolling:touch;max-height:70vh"><div class="loading"><span class="spinner"></span>読み込み中…</div></div>
+  </div><!-- /page-matrix -->
+
 </div>
 <!-- 写真ビューワー -->
 <div class="photo-viewer" id="photoViewer" onclick="closePhotoViewer()">
@@ -355,6 +397,98 @@
     document.body.style.overflow = '';
   }
   function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  const HOLIDAYS = new Set(['2026-01-01','2026-01-12','2026-02-11','2026-02-23','2026-03-20','2026-04-29','2026-05-03','2026-05-04','2026-05-05','2026-05-06','2026-07-20','2026-08-11','2026-09-21','2026-09-22','2026-09-23','2026-10-12','2026-11-03','2026-11-23','2026-12-23']);
+  const DAYS = ['日','月','火','水','木','金','土'];
+
+  function switchTab(name, el) {
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.page-tab').forEach(t=>t.classList.remove('active'));
+    document.getElementById('page-'+name).classList.add('active');
+    el.classList.add('active');
+    if (name==='matrix') loadMatrix();
+  }
+
+  async function loadMatrix() {
+    document.getElementById('matrixArea').innerHTML = '<div class="loading"><span class="spinner"></span>読み込み中…</div>';
+    const month = document.getElementById('matrixMonth').value;
+    const course = document.getElementById('matrixCourse').value;
+    if (!month) { document.getElementById('matrixArea').innerHTML = '<div class="empty">月を選択してください</div>'; return; }
+
+    const [y,m] = month.split('-').map(Number);
+    const lastDay = new Date(y, m, 0).getDate();
+    const from = `${month}-01`;
+    const to = `${month}-${String(lastDay).padStart(2,'0')}`;
+
+    let q = `?deleted=is.false&cleaning_date=gte.${from}&cleaning_date=lte.${to}&order=cleaning_date.asc`;
+    if (course) q += `&course_name=eq.${encodeURIComponent(course)}`;
+
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/cleaning_records${q}`, { headers: SB_H });
+    const records = await res.json();
+
+    // 物件一覧（コース順・物件名順）
+    const propMap = {};
+    records.forEach(r => { propMap[r.property_name] = r.course_name; });
+    const props = Object.keys(propMap).sort();
+
+    if (!props.length) { document.getElementById('matrixArea').innerHTML = '<div class="empty">記録がありません</div>'; return; }
+
+    // date→prop set
+    const matrix = {};
+    records.forEach(r => {
+      if (!matrix[r.cleaning_date]) matrix[r.cleaning_date] = new Set();
+      matrix[r.cleaning_date].add(r.property_name);
+    });
+
+    const todayStr = (()=>{ const n=new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; })();
+
+    const CHECK_COLS = ['入口周り','ポスト・掲示板','通路','階段・手すり','各玄関ドア・機器','消火器','天井・クモの巣','照明','ゴミボックス','駐輪場・ポール','駐車場','植栽','水路','クモの巣多し','除草剤散布','落ち葉多し','階段拭き','照明（球切れ等）','砂取り'];
+
+    // 物件→記録リスト
+    const propRecords = {};
+    records.forEach(r => {
+      if (!propRecords[r.property_name]) propRecords[r.property_name] = [];
+      propRecords[r.property_name].push(r);
+    });
+
+    let html = `<div class="matrix-wrap"><table><thead><tr>
+      <th style="min-width:90px;position:sticky;left:0;z-index:11">物件</th>
+      <th style="min-width:70px">実施日</th>
+      <th style="min-width:36px">天候</th>
+      ${CHECK_COLS.map(col=>`<th style="writing-mode:vertical-rl;text-orientation:mixed;min-width:24px;padding:8px 3px;font-size:10px">${esc(col)}</th>`).join('')}
+      <th style="min-width:80px;text-align:left">特記事項</th>
+    </tr></thead><tbody>`;
+
+    props.forEach(p => {
+      const recs = propRecords[p] || [];
+      if (!recs.length) {
+        html += `<tr><td class="m-date" style="position:sticky;left:0">${esc(p)}</td><td colspan="${3+CHECK_COLS.length}" style="text-align:center;color:var(--muted);font-size:11px">—</td></tr>`;
+        return;
+      }
+      recs.forEach((r, i) => {
+        const ds = r.cleaning_date || '';
+        const [ry,rm,rd] = ds ? ds.split('-').map(Number) : [0,0,0];
+        const dow = ds ? DAYS[new Date(ry,rm-1,rd).getDay()] : '';
+        const hol = ds ? HOLIDAYS.has(ds) : false;
+        const dow2 = ds ? new Date(ry,rm-1,rd).getDay() : -1;
+        const dateCls = hol||dow2===0?'color:var(--red)':dow2===6?'color:var(--blue)':'';
+        const checks = new Set([
+          ...(r.check_items ? r.check_items.split('／').filter(Boolean) : []),
+          ...(r.special_items ? r.special_items.split('／').filter(Boolean) : [])
+        ]);
+        html += `<tr>
+          ${i===0 ? `<td class="m-date" rowspan="${recs.length}" style="position:sticky;left:0;background:white">${esc(p)}</td>` : ''}
+          <td style="padding:4px 6px;font-size:11px;font-weight:700;${dateCls};white-space:nowrap">${rd}（${dow}）</td>
+          <td style="padding:4px 4px;text-align:center;font-size:11px">${esc(r.weather||'')}</td>
+          ${CHECK_COLS.map(col=>`<td style="text-align:center;font-size:13px">${checks.has(col)?'<span class="m-check">✓</span>':''}</td>`).join('')}
+          <td style="padding:4px 6px;font-size:11px;color:var(--orange)">${r.notes?esc(r.notes):''}</td>
+        </tr>`;
+      });
+    });
+    html += '</tbody></table></div>';
+    document.getElementById('matrixArea').innerHTML = html;
+    document.getElementById('matrixCount').textContent = `${records.length}件`;
+  }
   function initDateFilter() {
     const now = new Date();
     const y = now.getFullYear();
@@ -365,6 +499,15 @@
 
   initDateFilter();
   loadRecords();
+  // マトリクス初期化
+  const now2 = new Date();
+  document.getElementById('matrixMonth').value = `${now2.getFullYear()}-${String(now2.getMonth()+1).padStart(2,'0')}`;
+  // マトリクスのコースセレクト
+  (async () => {
+    const cs = await fetch(`${SUPABASE_URL}/rest/v1/courses?order=sort_order.asc`, { headers: SB_H }).then(r=>r.json());
+    const sel = document.getElementById('matrixCourse');
+    cs.forEach(c => { const o=document.createElement('option'); o.value=c.name; o.textContent=c.name; sel.appendChild(o); });
+  })();
 </script>
 
 <footer style="text-align:center;padding:20px 16px;font-size:11px;color:var(--muted,#6b7c6e);border-top:1px solid var(--border,#c5d9c7);margin-top:20px">
