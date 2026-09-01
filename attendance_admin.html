@@ -209,7 +209,7 @@
     const month = document.getElementById('filterMonth').value;
     const staff = document.getElementById('filterStaff').value;
     let q = '?order=work_date.desc,created_at.desc';
-    if (month) q += `&work_date=gte.${month}-01&work_date=lte.${month}-31`;
+    if (month) { const [my,mm]=month.split('-').map(Number); const lastD=new Date(my,mm,0).getDate(); q += `&work_date=gte.${month}-01&work_date=lte.${month}-${String(lastD).padStart(2,'0')}`; }
     if (staff) q += `&staff_name=eq.${encodeURIComponent(staff)}`;
     try {
       allRecords = await sbGet('attendance', q);
@@ -245,7 +245,7 @@
     const month = document.getElementById('statsMonth').value;
     const staff = document.getElementById('statsStaff').value;
     let q = '?order=work_date.asc';
-    if (month) q += `&work_date=gte.${month}-01&work_date=lte.${month}-31`;
+    if (month) { const [my,mm]=month.split('-').map(Number); const lastD=new Date(my,mm,0).getDate(); q += `&work_date=gte.${month}-01&work_date=lte.${month}-${String(lastD).padStart(2,'0')}`; }
     if (staff) q += `&staff_name=eq.${encodeURIComponent(staff)}`;
     try {
       const records = await sbGet('attendance', q);

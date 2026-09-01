@@ -407,9 +407,8 @@
 
   function todayJST() {
     const now = new Date();
-    const offset = 9 * 60;
-    const jst = new Date(now.getTime() + offset * 60000);
-    return jst.toISOString().split('T')[0];
+    const jst = new Date(now.toLocaleString('en-US', {timeZone: 'Asia/Tokyo'}));
+    return `${jst.getFullYear()}-${String(jst.getMonth()+1).padStart(2,'0')}-${String(jst.getDate()).padStart(2,'0')}`;
   }
 
   function getClockDate() {
@@ -510,7 +509,7 @@
     document.getElementById('recordList').innerHTML = `<div class="loading"><span class="spinner"></span>読み込み中…</div>`;
     const month = document.getElementById('filterMonth').value;
     let q = `?staff_name=eq.${encodeURIComponent(staffName)}&order=work_date.desc,created_at.desc`;
-    if (month) { q += `&work_date=gte.${month}-01&work_date=lte.${month}-31`; }
+    if (month) { const [my,mm]=month.split('-').map(Number); const lastD=new Date(my,mm,0).getDate(); q += `&work_date=gte.${month}-01&work_date=lte.${month}-${String(lastD).padStart(2,'0')}`; }
     try {
       allRecords = await sbGet('attendance', q);
       // サマリー計算
