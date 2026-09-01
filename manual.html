@@ -2,290 +2,316 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>清掃記録システム スタッフ向けマニュアル</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>スタッフ向けマニュアル</title>
 <style>
   * { box-sizing:border-box; margin:0; padding:0; }
   :root {
     --green:#2d6a4f; --green-light:#52b788; --green-pale:#d8f3dc;
     --bg:#f8faf8; --text:#1b2e1e; --muted:#6b7c6e;
-    --border:#c5d9c7; --white:#ffffff; --orange:#e67e22;
+    --border:#c5d9c7; --white:#ffffff; --red:#c0392b; --blue:#2980b9; --orange:#e67e22;
   }
   body { font-family:-apple-system,'Hiragino Sans','Yu Gothic',sans-serif; background:var(--bg); color:var(--text); font-size:15px; line-height:1.7; }
+  header { background:var(--green); color:white; padding:14px 16px; display:flex; align-items:center; gap:10px; position:sticky; top:0; z-index:100; box-shadow:0 2px 8px rgba(0,0,0,.15); }
+  header .icon { font-size:20px; }
+  header h1 { flex:1; font-size:16px; font-weight:700; }
+  header a { color:rgba(255,255,255,.8); font-size:12px; text-decoration:none; white-space:nowrap; }
 
-  /* ヘッダー */
-  .cover { background:var(--green); color:white; padding:40px 24px 32px; text-align:center; }
-  .cover .icon { font-size:48px; margin-bottom:12px; }
-  .cover h1 { font-size:22px; font-weight:800; letter-spacing:0.05em; margin-bottom:6px; }
-  .cover p { font-size:13px; opacity:0.8; }
+  .cover { background:linear-gradient(135deg,#2d6a4f,#52b788); color:white; padding:40px 24px 32px; text-align:center; }
+  .cover .icon { font-size:56px; margin-bottom:14px; }
+  .cover h2 { font-size:22px; font-weight:800; letter-spacing:.05em; margin-bottom:6px; }
+  .cover p { font-size:13px; opacity:.8; }
 
-  /* 目次 */
   .toc { background:var(--white); margin:16px; border-radius:12px; padding:16px 20px; box-shadow:0 1px 4px rgba(0,0,0,.07); }
-  .toc h2 { font-size:13px; font-weight:700; color:var(--green); margin-bottom:10px; letter-spacing:0.05em; }
-  .toc ol { padding-left:20px; }
-  .toc li { margin-bottom:6px; }
-  .toc a { color:var(--green); text-decoration:none; font-size:14px; }
-  .toc a:hover { text-decoration:underline; }
+  .toc h2 { font-size:13px; font-weight:700; color:var(--green); margin-bottom:10px; }
+  .toc-list { list-style:none; display:flex; flex-direction:column; gap:4px; }
+  .toc-list a { display:flex; align-items:center; gap:8px; color:var(--green); text-decoration:none; font-size:14px; padding:6px 8px; border-radius:8px; }
+  .toc-list a:hover { background:var(--green-pale); }
+  .toc-list .toc-icon { font-size:16px; width:24px; text-align:center; }
 
-  /* コンテンツ */
   .container { padding:0 16px 40px; max-width:700px; margin:0 auto; }
-
-  .section { margin-bottom:24px; }
+  .section { margin-bottom:28px; scroll-margin-top:60px; }
   .section-title { display:flex; align-items:center; gap:10px; background:var(--green); color:white; padding:12px 16px; border-radius:10px; margin-bottom:14px; }
-  .section-title .num { background:rgba(255,255,255,.25); border-radius:50%; width:28px; height:28px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; flex-shrink:0; }
-  .section-title h2 { font-size:15px; font-weight:700; }
+  .section-title .s-icon { font-size:20px; }
+  .section-title h2 { font-size:16px; font-weight:700; }
 
   .card { background:var(--white); border-radius:10px; padding:14px 16px; margin-bottom:10px; box-shadow:0 1px 4px rgba(0,0,0,.07); }
   .card h3 { font-size:13px; font-weight:700; color:var(--green); margin-bottom:8px; }
-  .card p { font-size:13px; color:var(--text); line-height:1.7; margin-bottom:6px; }
+  .card p { font-size:13px; line-height:1.7; margin-bottom:6px; }
   .card p:last-child { margin-bottom:0; }
 
-  /* ステップ */
   .steps { display:flex; flex-direction:column; gap:8px; }
-  .step { display:flex; gap:12px; align-items:flex-start; padding:10px 14px; background:var(--white); border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.07); }
-  .step-num { background:var(--green); color:white; border-radius:50%; width:26px; height:26px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; flex-shrink:0; margin-top:1px; }
+  .step { display:flex; gap:12px; align-items:flex-start; padding:12px 14px; background:var(--white); border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.07); }
+  .step-num { background:var(--green); color:white; border-radius:50%; width:28px; height:28px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; flex-shrink:0; margin-top:1px; }
   .step-body { flex:1; }
-  .step-title { font-size:13px; font-weight:700; color:var(--text); margin-bottom:2px; }
+  .step-title { font-size:13px; font-weight:700; margin-bottom:3px; }
   .step-desc { font-size:12px; color:var(--muted); line-height:1.6; }
 
-  /* 注意 */
-  .caution { display:flex; gap:10px; align-items:flex-start; background:#fffbf0; border:1.5px solid #f5cc7f; border-radius:8px; padding:10px 14px; margin-top:10px; }
-  .caution .icon { font-size:16px; flex-shrink:0; }
-  .caution p { font-size:12px; color:var(--orange); line-height:1.6; }
+  .tip { background:#fff8e1; border-left:4px solid var(--orange); padding:10px 14px; border-radius:0 8px 8px 0; margin-bottom:10px; font-size:13px; }
+  .tip-title { font-weight:700; color:var(--orange); margin-bottom:4px; }
+  .caution { background:#fde8e8; border-left:4px solid var(--red); padding:10px 14px; border-radius:0 8px 8px 0; margin-bottom:10px; font-size:13px; }
+  .caution-title { font-weight:700; color:var(--red); margin-bottom:4px; }
+  .check-list { list-style:none; display:flex; flex-direction:column; gap:4px; font-size:13px; }
+  .check-list li::before { content:'✓ '; color:var(--green); font-weight:700; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:700; margin-right:4px; }
+  .badge-green { background:var(--green-pale); color:var(--green); }
+  .badge-blue { background:#d6eaf8; color:var(--blue); }
+  .badge-orange { background:#fdebd0; color:var(--orange); }
+  .badge-red { background:#fde8e8; color:var(--red); }
 
-  /* ヒント */
-  .tip { display:flex; gap:10px; align-items:flex-start; background:var(--green-pale); border:1.5px solid var(--green-light); border-radius:8px; padding:10px 14px; margin-top:10px; }
-  .tip .icon { font-size:16px; flex-shrink:0; }
-  .tip p { font-size:12px; color:var(--green); line-height:1.6; }
-
-  /* FAQ */
-  .faq { background:var(--white); border-radius:10px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.07); margin-bottom:8px; }
-  .faq-q { display:flex; gap:10px; align-items:flex-start; padding:12px 14px; background:var(--green-pale); }
-  .faq-q .badge { background:var(--green); color:white; font-size:11px; font-weight:800; padding:2px 7px; border-radius:4px; flex-shrink:0; margin-top:1px; }
-  .faq-q p { font-size:13px; font-weight:600; color:var(--green); line-height:1.5; }
-  .faq-a { display:flex; gap:10px; align-items:flex-start; padding:12px 14px; }
-  .faq-a .badge { background:var(--muted); color:white; font-size:11px; font-weight:800; padding:2px 7px; border-radius:4px; flex-shrink:0; margin-top:1px; }
-  .faq-a p { font-size:13px; color:var(--text); line-height:1.6; }
-
-  /* OS切り替えタブ */
-  .os-tabs { display:flex; gap:0; margin-bottom:10px; border-radius:8px; overflow:hidden; border:1.5px solid var(--border); }
-  .os-tab { flex:1; padding:8px; text-align:center; font-size:13px; font-weight:700; cursor:pointer; background:var(--white); color:var(--muted); border:none; transition:all .15s; }
-  .os-tab.active { background:var(--green); color:white; }
-  .os-content { display:none; }
-  .os-content.active { display:block; }
-
-  /* チェックリスト表示 */
-  .check-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
-  .check-tag { display:flex; align-items:center; gap:6px; padding:7px 10px; background:var(--green-pale); border-radius:8px; font-size:12px; color:var(--green); font-weight:600; }
-  .check-tag::before { content:'✓'; font-weight:800; }
-
-  /* フッター */
-  footer { background:var(--green); color:rgba(255,255,255,.7); text-align:center; padding:20px; font-size:12px; }
+  footer { text-align:center; padding:20px 16px; font-size:11px; color:var(--muted); border-top:1px solid var(--border); margin-top:20px; }
 </style>
 </head>
 <body>
 
-<!-- 表紙 -->
+<header>
+  <div class="icon">📖</div>
+  <h1>マニュアル</h1>
+  <a href="index.html">🏠 メニュー</a>
+</header>
+
 <div class="cover">
   <div class="icon">🧹</div>
-  <h1>清掃記録システム</h1>
-  <p>スタッフ向け操作マニュアル</p>
+  <h2>スタッフ向けマニュアル</h2>
+  <p>有限会社TYS 清掃記録システム</p>
 </div>
 
-<!-- 目次 -->
 <div class="toc">
   <h2>📋 目次</h2>
-  <ol>
-    <li><a href="#s1">システムへのアクセス方法</a></li>
-    <li><a href="#s2">初回設定（入力者名の登録）</a></li>
-    <li><a href="#s3">清掃記録の入力手順</a></li>
-    <li><a href="#s4">写真のアップロード</a></li>
-    <li><a href="#s5">当月記録の確認・修正</a></li>
-    <li><a href="#s6">よくある質問</a></li>
-  </ol>
+  <ul class="toc-list">
+    <li><a href="#sec-menu"><span class="toc-icon">🏠</span>メニュー画面</a></li>
+    <li><a href="#sec-record"><span class="toc-icon">🧹</span>清掃記録の入力</a></li>
+    <li><a href="#sec-list"><span class="toc-icon">📋</span>記録一覧の確認</a></li>
+    <li><a href="#sec-attendance"><span class="toc-icon">⏰</span>勤怠打刻</a></li>
+    <li><a href="#sec-shift"><span class="toc-icon">📅</span>シフト希望・確認</a></li>
+  </ul>
 </div>
 
 <div class="container">
 
-  <!-- 1. アクセス方法 -->
-  <div class="section" id="s1">
+  <!-- メニュー -->
+  <div class="section" id="sec-menu">
     <div class="section-title">
-      <div class="num">1</div>
-      <h2>システムへのアクセス方法</h2>
+      <span class="s-icon">🏠</span>
+      <h2>メニュー画面</h2>
     </div>
-
     <div class="card">
-      <p>ブラウザ（SafariまたはChrome）から担当者に共有されたURLを開いてください。ホーム画面に追加するとアプリのように起動できます。</p>
+      <p>アプリを起動するとメニュー画面が表示されます。各ボタンをタップして目的の画面に移動してください。</p>
+      <br>
+      <ul class="check-list">
+        <li><span class="badge badge-green">🧹 清掃記録</span>清掃内容の入力</li>
+        <li><span class="badge badge-green">📋 記録一覧</span>過去の記録確認</li>
+        <li><span class="badge badge-blue">⏰ 打刻</span>出勤・退勤の打刻</li>
+        <li><span class="badge badge-orange">📅 シフト</span>休み希望の入力・シフト確認</li>
+        <li><span class="badge badge-red">⚙️ 管理者</span>管理者専用（PIN必要）</li>
+      </ul>
     </div>
-
-    <div class="os-tabs">
-      <button class="os-tab active" onclick="switchOS('ios')">🍎 iPhone</button>
-      <button class="os-tab" onclick="switchOS('android')">🤖 Android</button>
-    </div>
-
-    <div class="os-content active" id="os-ios">
-      <div class="steps">
-        <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">Safariでシステムのページを開く</div><div class="step-desc">担当者から共有されたURLを入力してください。</div></div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">共有ボタンをタップ</div><div class="step-desc">画面下部の「□から↑が出ているアイコン」をタップします。</div></div></div>
-        <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">「ホーム画面に追加」をタップ</div><div class="step-desc">メニューをスクロールして「ホーム画面に追加」を選んでください。</div></div></div>
-        <div class="step"><div class="step-num">4</div><div class="step-body"><div class="step-title">名前を確認して「追加」をタップ</div><div class="step-desc">名前を「清掃記録」などに変更して「追加」を押してください。</div></div></div>
-      </div>
-    </div>
-
-    <div class="os-content" id="os-android">
-      <div class="steps">
-        <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">Chromeでシステムのページを開く</div><div class="step-desc">担当者から共有されたURLを入力してください。</div></div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">右上の「⋮」をタップ</div><div class="step-desc">画面右上のメニューボタンをタップします。</div></div></div>
-        <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">「ホーム画面に追加」をタップ</div><div class="step-desc">メニューから「ホーム画面に追加」を選んでください。</div></div></div>
-        <div class="step"><div class="step-num">4</div><div class="step-body"><div class="step-title">名前を確認して「追加」をタップ</div><div class="step-desc">名前を確認して「追加」を押してください。</div></div></div>
-      </div>
+    <div class="tip">
+      <div class="tip-title">💡 ホーム画面への追加</div>
+      スマホのブラウザで開いたら「ホーム画面に追加」するとアプリのように使えます。
     </div>
   </div>
 
-  <!-- 2. 初回設定 -->
-  <div class="section" id="s2">
+  <!-- 清掃記録 -->
+  <div class="section" id="sec-record">
     <div class="section-title">
-      <div class="num">2</div>
-      <h2>初回設定（入力者名の登録）</h2>
-    </div>
-    <div class="card">
-      <p>初回のみ入力者名の登録が必要です。一度登録するとこの端末では次回から自動で入力されます。</p>
+      <span class="s-icon">🧹</span>
+      <h2>清掃記録の入力</h2>
     </div>
     <div class="steps">
-      <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">入力フォームを開く</div><div class="step-desc">ホーム画面のアイコンまたはURLからシステムを開いてください。</div></div></div>
-      <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">「入力者」欄に氏名を入力する</div><div class="step-desc">フォームの一番上にある「入力者」欄に自分の名前を入力してください。</div></div></div>
-      <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">「記憶」ボタンをタップ</div><div class="step-desc">入力欄の右にある「記憶」ボタンをタップしてください。</div></div></div>
-      <div class="step"><div class="step-num">4</div><div class="step-body"><div class="step-title">完了メッセージを確認</div><div class="step-desc">「〇〇を記憶しました」と表示されれば登録完了です。</div></div></div>
-    </div>
-    <div class="caution"><div class="icon">⚠️</div><p>端末を変えた場合や、ブラウザのデータを削除した場合は再度登録が必要です。</p></div>
-  </div>
-
-  <!-- 3. 入力手順 -->
-  <div class="section" id="s3">
-    <div class="section-title">
-      <div class="num">3</div>
-      <h2>清掃記録の入力手順</h2>
-    </div>
-    <div class="steps">
-      <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">コースを選択する</div><div class="step-desc">ドロップダウンから担当コースを選択してください。</div></div></div>
-      <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">物件名を選択する</div><div class="step-desc">コースを選ぶと対応する物件一覧が表示されます。清掃した物件を選んでください。物件を選択すると当月の実施記録が下部に表示されます。</div></div></div>
-      <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">実施日を確認する</div><div class="step-desc">本日の日付が自動入力されています。必要に応じて変更してください。</div></div></div>
-      <div class="step"><div class="step-num">4</div><div class="step-body"><div class="step-title">天候を選択する</div><div class="step-desc">「☀️ 晴」「☁️ 曇」「🌧️ 雨」「❄️ 雪」からタップして選択してください。</div></div></div>
-      <div class="step"><div class="step-num">5</div><div class="step-body"><div class="step-title">開始・終了時刻を入力する</div><div class="step-desc">「現在時刻」ボタンを押すとその時点の時刻が自動入力されます。清掃開始時に開始、終了時に終了の「現在時刻」をタップしてください。</div></div></div>
-      <div class="step"><div class="step-num">6</div><div class="step-body"><div class="step-title">清掃チェック項目を選択する</div><div class="step-desc">実施した項目をすべてタップしてください。タップすると緑色になります。</div>
-        <div style="margin-top:8px">
-          <div class="check-grid">
-            <div class="check-tag">入口周り</div><div class="check-tag">ポスト・掲示板</div>
-            <div class="check-tag">通路</div><div class="check-tag">階段・手すり</div>
-            <div class="check-tag">各玄関ドア・機器</div><div class="check-tag">消火器</div>
-            <div class="check-tag">天井・クモの巣</div><div class="check-tag">照明</div>
-            <div class="check-tag">ゴミボックス</div><div class="check-tag">駐輪場・ポール</div>
-            <div class="check-tag">駐車場</div><div class="check-tag">植栽</div>
-            <div class="check-tag">水路</div>
-          </div>
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">入力者名を入力</div>
+          <div class="step-desc">初回は氏名を入力して「記憶」ボタンを押してください。次回から自動で入ります。</div>
         </div>
-      </div></div>
-      <div class="step"><div class="step-num">7</div><div class="step-body"><div class="step-title">追加対応を選択する（任意）</div><div class="step-desc">クモの巣多し・除草剤散布・落ち葉多し・階段拭き・照明（球切れ等）から該当するものをタップしてください。</div></div></div>
-      <div class="step"><div class="step-num">8</div><div class="step-body"><div class="step-title">特記事項を入力する（任意）</div><div class="step-desc">異常や気になった点があれば入力してください。入力すると管理者にメール通知が送られます。</div></div></div>
-      <div class="step"><div class="step-num">9</div><div class="step-body"><div class="step-title">「記録を送信する」をタップ</div><div class="step-desc">「送信完了しました」と表示されれば保存完了です。</div></div></div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">コース・物件を選択</div>
+          <div class="step-desc">まずコースを選択すると、そのコースの物件一覧が表示されます。物件を選択してください。</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">実施日・天候・時刻を入力</div>
+          <div class="step-desc">清掃を行った日付・天候・開始時刻と終了時刻を入力してください。</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <div class="step-title">チェック項目にチェック</div>
+          <div class="step-desc">実施した清掃項目にチェックを入れてください。追加対応がある場合は「追加対応」欄にもチェックを入れてください。</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <div class="step-title">写真・特記事項を入力（任意）</div>
+          <div class="step-desc">気になる箇所の写真を撮影してアップロードできます。特記事項がある場合はテキストで入力してください。特記事項を入力すると担当者にメールが送信されます。</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-body">
+          <div class="step-title">「記録を送信する」をタップ</div>
+          <div class="step-desc">送信が完了すると「送信完了」画面が表示されます。</div>
+        </div>
+      </div>
     </div>
-    <div class="caution"><div class="icon">⚠️</div><p>コース・物件・天候・時刻は必須項目です。未入力の場合は送信できません。</p></div>
-  </div>
-
-  <!-- 4. 写真 -->
-  <div class="section" id="s4">
-    <div class="section-title">
-      <div class="num">4</div>
-      <h2>写真のアップロード</h2>
+    <br>
+    <div class="tip">
+      <div class="tip-title">💡 当月の記録確認</div>
+      物件を選択すると、その物件の今月の実施記録が下部に表示されます。タップすると内容を修正できます。
+    </div>
+    <div class="tip">
+      <div class="tip-title">💡 自動保存</div>
+      入力中の内容は自動的に保存されます。誤ってブラウザを閉じても、次回開いたときに復元されます。
     </div>
     <div class="card">
-      <p>清掃中に気になった箇所や特記事項に関連する写真を複数枚アップロードできます（最大10枚）。</p>
+      <h3>チェック項目一覧</h3>
+      <ul class="check-list">
+        <li>入口周り</li><li>ポスト・掲示板</li><li>通路</li><li>階段・手すり</li>
+        <li>各玄関ドア・機器</li><li>消火器</li><li>天井・クモの巣</li><li>照明</li>
+        <li>ゴミボックス</li><li>駐輪場・ポール</li><li>駐車場</li><li>植栽</li><li>水路</li>
+      </ul>
+      <br>
+      <h3>追加対応</h3>
+      <ul class="check-list">
+        <li>クモの巣多し</li><li>除草剤散布</li><li>落ち葉多し</li>
+        <li>階段拭き</li><li>照明（球切れ等）</li><li>砂取り</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 記録一覧 -->
+  <div class="section" id="sec-list">
+    <div class="section-title">
+      <span class="s-icon">📋</span>
+      <h2>記録一覧の確認</h2>
+    </div>
+    <div class="card">
+      <p>過去の清掃記録を検索・確認できます。物件名・コース・入力者・期間で絞り込みができます。</p>
     </div>
     <div class="steps">
-      <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">「写真（任意）」セクションを確認する</div><div class="step-desc">入力フォームの下部にある「写真（任意）」セクションを開いてください。</div></div></div>
-      <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">「写真を選択」をタップする</div><div class="step-desc">カメラまたはフォトライブラリから写真を選んでください。複数枚同時に選択できます。</div></div></div>
-      <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">サムネイルを確認する</div><div class="step-desc">選んだ写真のサムネイルが表示されます。不要な写真は「✕」ボタンで削除できます。</div></div></div>
-      <div class="step"><div class="step-num">4</div><div class="step-body"><div class="step-title">記録と一緒に送信する</div><div class="step-desc">「記録を送信する」ボタンを押すと写真も同時にアップロードされます。</div></div></div>
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">条件を入力して検索</div>
+          <div class="step-desc">物件名やコース名で絞り込めます。期間を指定することもできます。</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">記録をタップして詳細確認</div>
+          <div class="step-desc">記録カードをタップすると詳細が表示されます。写真も確認できます。</div>
+        </div>
+      </div>
     </div>
-    <div class="tip"><div class="icon">💡</div><p>写真は自動的に圧縮されるため通信量を抑えられます。Wi-Fi環境での使用を推奨します。</p></div>
+    <div class="tip">
+      <div class="tip-title">💡 マトリクス表示</div>
+      「マトリクス」タブに切り替えると物件ごとの実施状況を一覧で確認できます。
+    </div>
   </div>
 
-  <!-- 5. 確認・修正 -->
-  <div class="section" id="s5">
+  <!-- 勤怠 -->
+  <div class="section" id="sec-attendance">
     <div class="section-title">
-      <div class="num">5</div>
-      <h2>当月記録の確認・修正</h2>
+      <span class="s-icon">⏰</span>
+      <h2>勤怠打刻</h2>
     </div>
-
-    <div class="card">
-      <h3>📅 当月記録の確認</h3>
-      <p>物件名を選択すると、その物件の当月実施記録が入力フォームの下部に一覧表示されます。日付・時刻・入力者を確認できます。</p>
-    </div>
-
-    <div class="card">
-      <h3>✏️ 記録の修正</h3>
-      <p>入力ミスがあった場合は当月記録の一覧から修正できます。</p>
-    </div>
-
     <div class="steps">
-      <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">物件名を選択して当月記録を表示する</div><div class="step-desc">フォームでコース・物件を選択すると下部に記録一覧が表示されます。</div></div></div>
-      <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">修正したい記録をタップする</div><div class="step-desc">各行の右側に「修正」バッジが表示されています。修正したい行をタップしてください。</div></div></div>
-      <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">内容を修正する</div><div class="step-desc">実施日・天候・時刻・清掃項目・特記事項を変更できます。</div></div></div>
-      <div class="step"><div class="step-num">4</div><div class="step-body"><div class="step-title">「更新する」をタップして保存する</div><div class="step-desc">変更が完了したら「更新する」をタップしてください。</div></div></div>
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">名前を確認</div>
+          <div class="step-desc">画面上部に自分の名前が表示されていることを確認してください。違う場合は「変更」をタップしてください。</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">出勤ボタンをタップ</div>
+          <div class="step-desc">出勤時に「出勤 9:00」ボタンをタップしてください。出勤時刻として9:00が記録されます。</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">退勤ボタンをタップ</div>
+          <div class="step-desc">退勤時に「退勤」ボタンをタップしてください。現在時刻が記録されます。</div>
+        </div>
+      </div>
     </div>
-    <div class="caution"><div class="icon">⚠️</div><p>「削除」ボタンを押すと記録が完全に消えます。誤操作にご注意ください。</p></div>
+    <br>
+    <div class="card">
+      <h3>手入力について</h3>
+      <p>時刻を手動で入力することもできます。打刻日も変更可能ですが、過去日の場合は正確な時刻を入力してください。</p>
+    </div>
+    <div class="tip">
+      <div class="tip-title">💡 運転チェック</div>
+      車を運転した日は「運転」にチェックを入れてください。
+    </div>
+    <div class="tip">
+      <div class="tip-title">💡 履歴確認</div>
+      「履歴」タブで過去の打刻記録・出勤日数・総勤務時間を確認できます。
+    </div>
+    <div class="caution">
+      <div class="caution-title">⚠️ 注意</div>
+      打刻を忘れた場合は手入力で対応してください。修正が必要な場合は管理者に連絡してください。
+    </div>
   </div>
 
-  <!-- 6. FAQ -->
-  <div class="section" id="s6">
+  <!-- シフト -->
+  <div class="section" id="sec-shift">
     <div class="section-title">
-      <div class="num">6</div>
-      <h2>よくある質問</h2>
+      <span class="s-icon">📅</span>
+      <h2>シフト希望・確認</h2>
     </div>
-
-    <div class="faq">
-      <div class="faq-q"><span class="badge">Q</span><p>コースや物件が表示されない</p></div>
-      <div class="faq-a"><span class="badge">A</span><p>通信状況を確認し、ページを再読み込みしてください。それでも表示されない場合は管理者に連絡してください。</p></div>
+    <div class="card">
+      <h3>休み希望の入力</h3>
+      <p>「希望入力」タブで翌月の休み希望を入力できます。</p>
     </div>
-    <div class="faq">
-      <div class="faq-q"><span class="badge">Q</span><p>送信ボタンを押しても完了画面が表示されない</p></div>
-      <div class="faq-a"><span class="badge">A</span><p>インターネット接続を確認してください。接続が不安定な場所では送信に失敗することがあります。電波の良い場所で再度お試しください。</p></div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">月を選択</div>
+          <div class="step-desc">◀▶ボタンで希望を入力したい月に移動してください。</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">休みたい日付をタップ</div>
+          <div class="step-desc">カレンダーの日付をタップすると「❌ 休み希望」ボタンが表示されます。</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">「保存」をタップ</div>
+          <div class="step-desc">保存するとカレンダーに❌が表示されます。取り消したい場合は再度タップして「削除」を選択してください。</div>
+        </div>
+      </div>
     </div>
-    <div class="faq">
-      <div class="faq-q"><span class="badge">Q</span><p>入力者名が消えてしまった</p></div>
-      <div class="faq-a"><span class="badge">A</span><p>ブラウザのデータが削除された可能性があります。再度「入力者」欄に氏名を入力し「記憶」ボタンを押してください。</p></div>
+    <br>
+    <div class="card">
+      <h3>確定シフトの確認</h3>
+      <p>「シフト」タブで管理者が作成した確定シフトを確認できます。自分の列に⭕が表示された日が出勤日です。コース欄に担当コースが表示されます。</p>
     </div>
-    <div class="faq">
-      <div class="faq-q"><span class="badge">Q</span><p>誤った記録を送信してしまった</p></div>
-      <div class="faq-a"><span class="badge">A</span><p>物件を選択して当月記録を表示し、該当の記録をタップして修正できます。修正後「更新する」を押してください。</p></div>
-    </div>
-    <div class="faq">
-      <div class="faq-q"><span class="badge">Q</span><p>写真がアップロードできない</p></div>
-      <div class="faq-a"><span class="badge">A</span><p>通信状況を確認してください。Wi-Fi環境での使用を推奨します。また、写真は最大10枚までです。</p></div>
-    </div>
-    <div class="faq">
-      <div class="faq-q"><span class="badge">Q</span><p>ホーム画面にアイコンが表示されない</p></div>
-      <div class="faq-a"><span class="badge">A</span><p>「1. アクセス方法」の手順に従ってホーム画面への追加をやり直してください。</p></div>
+    <div class="caution">
+      <div class="caution-title">⚠️ 注意</div>
+      休み希望の締め切りは管理者に確認してください。締め切り後の変更は管理者に直接連絡してください。
     </div>
   </div>
 
 </div>
 
-<footer>
-  ご不明な点は管理者までお問い合わせください
-</footer>
-
-<script>
-  function switchOS(os) {
-    document.querySelectorAll('.os-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.os-content').forEach(c => c.classList.remove('active'));
-    document.getElementById('os-' + os).classList.add('active');
-    event.target.classList.add('active');
-  }
-</script>
-
-<footer style="text-align:center;padding:20px 16px;font-size:11px;color:var(--muted,#6b7c6e);border-top:1px solid var(--border,#c5d9c7);margin-top:20px">
-  © 2026 TYS Co., Ltd. All rights reserved.
-</footer>
+<footer>© 2026 TYS Co., Ltd. All rights reserved.</footer>
 </body>
 </html>

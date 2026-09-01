@@ -2,7 +2,7 @@
   "name": "kiyoshi",
   "short_name": "清掃記録",
   "description": "清掃実施記録システム",
-  "start_url": "./cleaning_record.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#2d6a4f",
   "theme_color": "#2d6a4f",

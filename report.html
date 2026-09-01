@@ -94,7 +94,9 @@
 <header>
   <div class="icon">📄</div>
   <div class="title"><h1>報告書作成</h1><p>物件ごとの当月清掃記録PDF</p></div>
-  <div class="nav"><a href="cleaning_record.html">🧹 清掃記録</a></div>
+  <div class="nav">
+    <a href="index.html" style="color:rgba(255,255,255,.8);font-size:13px;text-decoration:none">🏠 メニュー</a>
+  </div>
 </header>
 
 <!-- 印刷用エリア（非表示） -->
@@ -303,7 +305,7 @@
       matHtml += `</tbody></table></div></div>`;
     });
 
-    document.getElementById('listArea').innerHTML = `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h2>📋 一覧</h2><span class="count-tag">${records.length}件</span></div>${matHtml}<button class="btn-download" onclick="printList()">📄 PDFとして印刷・保存</button></div>`;
+    document.getElementById('listArea').innerHTML = `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h2>📋 ${y}年${m}月　清掃実施一覧</h2><span class="count-tag">${records.length}件</span></div>${matHtml}<button class="btn-download" onclick="printList()">📄 PDFとして印刷・保存</button></div>`;
   }
 
   async function sbGet(table, q='') {

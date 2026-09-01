@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="清掃記録">
+<meta name="theme-color" content="#2d6a4f">
+<title>清掃記録システム</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --green:#2d6a4f; --green-light:#52b788; --green-pale:#d8f3dc;
+    --bg:#f8faf8; --text:#1b2e1e; --muted:#6b7c6e;
+    --border:#c5d9c7; --white:#ffffff; --blue:#2980b9; --orange:#e67e22;
+  }
+  body { font-family:-apple-system,'Hiragino Sans','Yu Gothic',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; }
+
+  header { background:var(--green); color:white; padding:20px 24px; text-align:center; box-shadow:0 2px 8px rgba(0,0,0,.15); }
+  header .logo { font-size:40px; margin-bottom:8px; }
+  header h1 { font-size:20px; font-weight:800; letter-spacing:.05em; }
+  header p { font-size:13px; opacity:.75; margin-top:4px; }
+
+  .container { flex:1; padding:24px 20px 40px; max-width:500px; margin:0 auto; width:100%; }
+
+  .menu-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:20px; }
+
+  
+  .menu-card { background:var(--white); border-radius:16px; padding:24px 16px; text-align:center; text-decoration:none; color:var(--text); box-shadow:0 2px 8px rgba(0,0,0,.08); border:2px solid transparent; transition:all .15s; display:flex; flex-direction:column; align-items:center; gap:10px; }
+  .menu-card:active { transform:scale(.96); box-shadow:none; }
+  .menu-card .card-icon { font-size:44px; line-height:1; }
+  .menu-card .card-label { font-size:15px; font-weight:700; }
+  .menu-card .card-desc { font-size:11px; color:var(--muted); line-height:1.5; }
+
+  .card-green { border-color:var(--green-light); }
+  .card-green:active { background:var(--green-pale); }
+  .card-blue { border-color:#a9cce3; }
+  .card-blue:active { background:#eaf4fb; }
+  .card-orange { border-color:#f0c080; }
+  .card-orange:active { background:#fef3e0; }
+  .card-gray { border-color:#c0c8c0; }
+  .card-gray:active { background:#f0f4f0; }
+
+  footer { text-align:center; padding:16px; font-size:11px; color:var(--muted); border-top:1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🧹</div>
+  <h1>清掃記録システム</h1>
+  <p id="dateLabel"></p>
+</header>
+
+<div class="container">
+  <div class="menu-grid">
+
+    <a class="menu-card card-green" href="cleaning_record.html">
+      <div class="card-icon">🧹</div>
+      <div class="card-label">清掃記録</div>
+      <div class="card-desc">清掃内容の入力・記録確認</div>
+    </a>
+
+    <a class="menu-card card-gray" href="records.html">
+      <div class="card-icon">📋</div>
+      <div class="card-label">記録一覧</div>
+      <div class="card-desc">清掃記録の検索・確認</div>
+    </a>
+
+    <a class="menu-card card-blue" href="attendance.html">
+      <div class="card-icon">⏰</div>
+      <div class="card-label">打刻</div>
+      <div class="card-desc">出勤・退勤の打刻・履歴</div>
+    </a>
+
+    <a class="menu-card card-orange" href="shift.html">
+      <div class="card-icon">📅</div>
+      <div class="card-label">シフト</div>
+      <div class="card-desc">休み希望・シフト確認</div>
+    </a>
+
+    <a class="menu-card card-gray" href="admin.html">
+      <div class="card-icon">⚙️</div>
+      <div class="card-label">管理者</div>
+      <div class="card-desc">記録・集計・シフト管理</div>
+    </a>
+
+    <a class="menu-card card-gray" href="manual.html">
+      <div class="card-icon">📖</div>
+      <div class="card-label">マニュアル</div>
+      <div class="card-desc">操作方法の確認</div>
+    </a>
+
+  </div>
+</div>
+
+<footer>© 2026 TYS Co., Ltd. All rights reserved.</footer>
+
+<script>
+  const now = new Date();
+  const days = ['日','月','火','水','木','金','土'];
+  document.getElementById('dateLabel').textContent =
+    `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日（${days[now.getDay()]}）`;
+</script>
+</body>
+</html>
