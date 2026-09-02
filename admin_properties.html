@@ -133,6 +133,7 @@
       <div class="field-row"><label>物件コード</label><input type="text" id="newPropCode" class="code-input" placeholder="1"></div>
       <div class="field-row"><label>グループ名（管理会社）</label><input type="text" id="newPropGroup" placeholder="管理会社名など（任意）"></div>
       <div class="field-row"><label>物件名</label><input type="text" id="newPropName" placeholder="物件名を入力"></div>
+      <div class="field-row"><label>住所</label><input type="text" id="newPropAddress" placeholder="住所を入力（任意）"></div>
       <div class="btn-row"><button class="btn btn-green" onclick="addProperty()">追加</button></div>
     </div>
     <div class="count-bar" id="propCount"></div>
@@ -281,6 +282,7 @@
         <div style="flex:1;min-width:0">
           <div class="item-name" id="pname-${i}">${esc(p.name)}</div>
           ${p.group_name?`<div id="pgroup-${i}" style="font-size:11px;color:var(--muted);margin-top:2px">${esc(p.group_name)}</div>`:`<div id="pgroup-${i}" style="font-size:11px;color:var(--muted);margin-top:2px"></div>`}
+          ${p.address?`<div id="paddr-${i}" style="font-size:10px;color:var(--blue);margin-top:1px">📍 ${esc(p.address)}</div>`:`<div id="paddr-${i}" style="font-size:10px;color:var(--blue);margin-top:1px"></div>`}
         </div>
         <button class="btn-edit" onclick="editProperty(${i})">編集</button>
         <button class="btn-del" onclick="delProperty(${i})">✕</button>
@@ -293,12 +295,14 @@
     const code = document.getElementById('newPropCode').value.trim();
     const name = document.getElementById('newPropName').value.trim();
     const group_name = document.getElementById('newPropGroup').value.trim();
+    const address = document.getElementById('newPropAddress').value.trim();
     if (!code||!name) { alert('コードと名前を入力してください'); return; }
-    const ok = await sbInsert('properties', { code, name, group_name });
+    const ok = await sbInsert('properties', { code, name, group_name, address });
     if (ok) {
-      properties.push({ code, name, group_name });
+      properties.push({ code, name, group_name, address });
       document.getElementById('newPropName').value='';
       document.getElementById('newPropGroup').value='';
+      document.getElementById('newPropAddress').value='';
       renderProperties();
       showBanner('保存しました ✓');
     }
@@ -311,6 +315,8 @@
     nameEl.innerHTML=`<input id="epn-${i}" value="${esc(p.name)}" style="width:100%;padding:5px 8px;border:1.5px solid var(--green-light);border-radius:6px;font-size:13px;font-family:inherit">`;
     const groupEl = document.getElementById(`pgroup-${i}`);
     groupEl.innerHTML=`<input id="epg-${i}" value="${esc(p.group_name||'')}" placeholder="グループ名（管理会社）" style="width:100%;padding:4px 8px;border:1.5px solid var(--green-light);border-radius:6px;font-size:11px;font-family:inherit;margin-top:2px">`;
+    const addrEl = document.getElementById(`paddr-${i}`);
+    addrEl.innerHTML=`<input id="epa-${i}" value="${esc(p.address||'')}" placeholder="住所（任意）" style="width:100%;padding:4px 8px;border:1.5px solid var(--green-light);border-radius:6px;font-size:10px;font-family:inherit;margin-top:2px">`;
     // 編集ボタンをid指定で取得
     const editBtn = document.querySelector(`[onclick="editProperty(${i})"]`);
     if (editBtn) { editBtn.textContent='保存'; editBtn.className='btn-save'; editBtn.onclick=()=>saveProperty(i); }
@@ -320,10 +326,11 @@
     const code = document.getElementById(`epc-${i}`).value.trim();
     const name = document.getElementById(`epn-${i}`).value.trim();
     const group_name = document.getElementById(`epg-${i}`)?.value.trim()||'';
+    const address = document.getElementById(`epa-${i}`)?.value.trim()||'';
     if (!code||!name) { alert('入力してください'); return; }
     const oldCode = properties[i].code;
-    await sbUpdate('properties', `?code=eq.${oldCode}`, { code, name, group_name });
-    properties[i] = { ...properties[i], code, name, group_name };
+    await sbUpdate('properties', `?code=eq.${oldCode}`, { code, name, group_name, address });
+    properties[i] = { ...properties[i], code, name, group_name, address };
     renderProperties();
     showBanner('保存しました ✓');
   }

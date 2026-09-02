@@ -154,6 +154,7 @@
         <select id="propertyName" disabled onchange="onPropertyChange()">
           <option value="">まずコースを選択してください</option>
         </select>
+        <div id="mapBtnArea" style="margin-top:6px"></div>
       </div>
       <div class="field">
         <label>実施日<span class="req">*</span></label>
@@ -374,7 +375,7 @@
     propSel.innerHTML = '<option value="">選択してください</option>';
     props.forEach(p => {
       const opt = document.createElement('option');
-      opt.value = JSON.stringify({ code: p.code, name: p.name });
+      opt.value = JSON.stringify({ code: p.code, name: p.name, address: p.address||'' });
       opt.textContent = p.name;
       propSel.appendChild(opt);
     });
@@ -695,14 +696,25 @@
 
   function onPropertyChange() {
     const propRaw = document.getElementById('propertyName').value;
+    const mapArea = document.getElementById('mapBtnArea');
     if (!propRaw) {
       document.getElementById('monthlyList').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">物件を選択すると表示されます</div>';
       document.getElementById('monthlyCount').textContent = '';
       document.getElementById('monthlyPropName').textContent = '';
+      if (mapArea) mapArea.innerHTML = '';
       return;
     }
     try {
       const p = JSON.parse(propRaw);
+      // 地図ボタン表示
+      if (mapArea) {
+        if (p.address) {
+          const url = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(p.address);
+          mapArea.innerHTML = `<a href="${url}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#e8f4fd;border:1.5px solid #a9cce3;border-radius:8px;color:var(--blue);font-size:12px;font-weight:700;text-decoration:none">📍 地図を開く<span style="font-size:10px;font-weight:400">${p.address}</span></a>`;
+        } else {
+          mapArea.innerHTML = '';
+        }
+      }
       loadMonthlyRecords(p.code, p.name);
     } catch(e) {}
   }
