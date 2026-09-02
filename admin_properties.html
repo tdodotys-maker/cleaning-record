@@ -92,20 +92,7 @@
     <a href="index.html" style="color:rgba(255,255,255,.8);font-size:13px;text-decoration:none">🏠 メニュー</a>
   </div>
 </header>
-<!-- ロック画面 -->
-<div class="lock-overlay" id="lockOverlay">
-  <div class="lock-icon">🔐</div>
-  <h2>管理者専用</h2>
-  <p>PINを入力してください</p>
-  <div class="pin-input">
-    <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="p0" oninput="onPin(0)">
-    <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="p1" oninput="onPin(1)">
-    <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="p2" oninput="onPin(2)">
-    <input class="pin-digit" type="password" inputmode="numeric" maxlength="1" id="p3" oninput="onPin(3)">
-  </div>
-  <div class="pin-error" id="pinError"></div>
-  <button class="btn-unlock" onclick="checkPin()">確認</button>
-</div>
+<!-- ロック画面なし -->
 
 <div class="container">
   <div class="page-tabs">
@@ -430,44 +417,7 @@
   const PIN = '1121';
   const SESSION_KEY = 'admin_unlocked';
 
-  function checkUnlocked() {
-    return sessionStorage.getItem(SESSION_KEY) === 'true';
-  }
-
-  function onPin(idx) {
-    const val = document.getElementById(`p${idx}`).value;
-    if (val && idx < 3) {
-      document.getElementById(`p${idx+1}`).focus();
-    }
-    if (idx === 3 && val) checkPin();
-  }
-
-  function checkPin() {
-    const pin = [0,1,2,3].map(i => document.getElementById(`p${i}`).value).join('');
-    if (pin === PIN) {
-      sessionStorage.setItem(SESSION_KEY, 'true');
-      document.getElementById('lockOverlay').style.display = 'none';
-      loadAll();
-    } else {
-      document.getElementById('pinError').textContent = 'PINが正しくありません';
-      [0,1,2,3].forEach(i => { document.getElementById(`p${i}`).value = ''; });
-      document.getElementById('p0').focus();
-      setTimeout(() => document.getElementById('pinError').textContent = '', 2000);
-    }
-  }
-
-  // Enterキー対応
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !checkUnlocked()) checkPin();
-  });
-
-  // 認証済みチェック
-  if (checkUnlocked()) {
-    document.getElementById('lockOverlay').style.display = 'none';
-    loadAll();
-  } else {
-    document.getElementById('p0').focus();
-  }
+  loadAll();
 </script>
 
 <footer style="text-align:center;padding:20px 16px;font-size:11px;color:var(--muted,#6b7c6e);border-top:1px solid var(--border,#c5d9c7);margin-top:20px">
