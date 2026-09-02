@@ -662,6 +662,9 @@
     document.getElementById('monthlyList').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">物件を選択すると表示されます</div>';
     document.getElementById('monthlyCount').textContent = '';
     document.getElementById('monthlyPropName').textContent = '';
+    // 地図ボタンをクリア
+    const mapArea = document.getElementById('mapBtnArea');
+    if (mapArea) mapArea.innerHTML = '';
     // ドラフト削除
     clearDraft();
     window.scrollTo(0, 0);
