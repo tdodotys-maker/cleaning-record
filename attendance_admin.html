@@ -48,6 +48,25 @@
   .btn-apply { padding:8px 16px; background:var(--blue); color:white; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; }
 
   .count-bar { font-size:12px; color:var(--muted); margin-bottom:8px; display:flex; justify-content:space-between; }
+
+  /* 給料計算 */
+  .wage-table { width:100%; border-collapse:collapse; font-size:12px; margin-bottom:16px; background:var(--white); border-radius:10px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.07); }
+  .wage-table th { background:var(--blue); color:white; padding:8px 6px; text-align:center; white-space:nowrap; }
+  .wage-table td { padding:7px 6px; border-bottom:1px solid #e8f0f8; text-align:center; vertical-align:middle; }
+  .wage-table tr:last-child td { border-bottom:none; }
+  .wage-table .sun { color:var(--red); }
+  .wage-table .sat { color:var(--blue-light); }
+  .wage-summary { background:var(--white); border-radius:10px; padding:14px 16px; box-shadow:0 1px 4px rgba(0,0,0,.07); margin-bottom:12px; }
+  .wage-summary .row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #e8f0f8; font-size:13px; }
+  .wage-summary .row:last-child { border-bottom:none; }
+  .wage-summary .row.total { font-size:16px; font-weight:700; color:var(--blue); }
+  .wage-summary label { color:var(--muted); font-size:12px; }
+  .wage-summary input[type=number] { width:120px; padding:6px 10px; border:1.5px solid var(--border); border-radius:8px; font-size:14px; text-align:right; font-family:inherit; }
+  .wage-summary input[type=number]:focus { outline:none; border-color:var(--blue-light); }
+  .wage-staff-sel { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; align-items:center; }
+  .wage-staff-sel select, .wage-staff-sel input { padding:8px 10px; border:1.5px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit; background:var(--white); }
+  .btn-wage { padding:8px 16px; background:var(--blue); color:white; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; }
+  .btn-save-wage { padding:6px 14px; background:var(--green); color:white; border:none; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; }
   .btn-reload { padding:5px 12px; border:1.5px solid var(--border); border-radius:6px; background:var(--white); font-size:12px; color:var(--muted); cursor:pointer; }
 
   .record-list { display:flex; flex-direction:column; gap:8px; }
@@ -119,6 +138,7 @@
   <div class="page-tabs">
     <button class="page-tab active" onclick="switchPage('list',this)">記録一覧</button>
     <button class="page-tab" onclick="switchPage('stats',this)">集計</button>
+    <button class="page-tab" onclick="switchPage('wage',this)">給料計算</button>
   </div>
 
   <!-- 記録一覧 -->
@@ -144,6 +164,16 @@
     </div>
     <div id="statsArea"><div class="loading"><span class="spinner"></span>読み込み中…</div></div>
   </div>
+
+  <!-- 給料計算 -->
+  <div class="page" id="page-wage">
+    <div class="wage-staff-sel">
+      <input type="month" id="wageMonth">
+      <select id="wageStaff"><option value="">スタッフを選択</option></select>
+      <button class="btn-wage" onclick="loadWage()">表示</button>
+    </div>
+    <div id="wageArea"></div>
+  </div>
 </div>
 
 <script>
@@ -168,6 +198,7 @@
     el.classList.add('active');
     if (name==='list') loadList();
     if (name==='stats') loadStats();
+    if (name==='wage') initWage();
   }
 
   async function loadList() {
@@ -288,6 +319,147 @@
 
   function closeEdit(e) { if(e.target===document.getElementById('editOverlay')) closeEditDirect(); }
   function closeEditDirect() { document.getElementById('editOverlay').classList.remove('show'); document.body.style.overflow=''; }
+
+  let wageData = {}; // staff_name → {hourly_wage}
+
+  async function initWage() {
+    const now = new Date();
+    const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    document.getElementById('wageMonth').value = ym;
+    // スタッフ一覧をattendanceから取得
+    const rows = await sbGet('attendance','?order=staff_name.asc');
+    const staffList = [...new Set(rows.map(r=>r.staff_name).filter(Boolean))].sort();
+    const sel = document.getElementById('wageStaff');
+    sel.innerHTML = '<option value="">スタッフを選択</option>';
+    staffList.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;sel.appendChild(o);});
+    // 時給データ取得
+    const wages = await sbGet('staff_wages','');
+    wageData = {};
+    wages.forEach(w=>{ wageData[w.staff_name]={id:w.id, hourly_wage:w.hourly_wage, driving_wage:w.driving_wage||0}; });
+  }
+
+  async function loadWage() {
+    const month = document.getElementById('wageMonth').value;
+    const staff = document.getElementById('wageStaff').value;
+    if (!month||!staff) { alert('月とスタッフを選択してください'); return; }
+    const [y,m] = month.split('-').map(Number);
+    const lastD = new Date(y,m,0).getDate();
+    const from = `${month}-01`, to = `${month}-${String(lastD).padStart(2,'0')}`;
+    const rows = await sbGet('attendance',`?staff_name=eq.${encodeURIComponent(staff)}&work_date=gte.${from}&work_date=lte.${to}&order=work_date.asc`);
+    const DAYS=['日','月','火','水','木','金','土'];
+    let totalMin=0, drivingCount=0;
+    let tableHtml=`<table class="wage-table"><thead><tr>
+      <th>日付</th><th>曜日</th><th>出勤</th><th>退勤</th><th>運転</th><th>実働</th><th style="min-width:100px;text-align:left">作業メモ</th>
+    </tr></thead><tbody>`;
+    rows.forEach(rec=>{
+      const ds=rec.work_date;
+      const [ry,rm,rd]=ds.split('-').map(Number);
+      const dow=new Date(ry,rm-1,rd).getDay();
+      const dowCls=dow===0?'sun':dow===6?'sat':'';
+      let inT='',outT='',workT='';
+      if(rec.clock_in){
+        const ci=new Date(rec.clock_in);
+        inT=ci.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Tokyo'});
+      }
+      if(rec.clock_out){
+        const co=new Date(rec.clock_out);
+        outT=co.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Tokyo'});
+      }
+      if(rec.clock_in&&rec.clock_out){
+        const diffMin=Math.round((new Date(rec.clock_out)-new Date(rec.clock_in))/60000);
+        totalMin+=diffMin;
+        const h=Math.floor(diffMin/60),mn=diffMin%60;
+        workT=`${h}:${String(mn).padStart(2,'0')}`;
+      }
+      const driving=rec.driving?'✓':'';
+      if(rec.driving) drivingCount++;
+      const memo=rec.memo?esc(rec.memo):'';
+      tableHtml+=`<tr>
+        <td class="${dowCls}">${rd}</td>
+        <td class="${dowCls}">${DAYS[dow]}</td>
+        <td>${inT}</td><td>${outT}</td><td style="color:var(--blue-light)">${driving}</td><td>${workT}</td><td style="text-align:left;font-size:11px;color:var(--muted)">${memo}</td>
+      </tr>`;
+    });
+    tableHtml+=`</tbody></table>`;
+    const totalH=Math.floor(totalMin/60), totalM=totalMin%60;
+    const wage=wageData[staff]||{hourly_wage:0,driving_wage:0};
+    const hourlyWage=wage.hourly_wage||0;
+    const drivingWageInit=wage.driving_wage||0;
+    const payBase=Math.floor(totalMin/60*hourlyWage + (totalMin%60)/60*hourlyWage);
+    const drivingTotalInit=drivingCount*drivingWageInit;
+    document.getElementById('wageArea').innerHTML=`
+      ${tableHtml}
+      <div class="wage-summary">
+        <div class="row"><label>合計時間</label><span style="font-weight:700">${totalH}時間${totalM}分</span></div>
+        <div class="row">
+          <label>時給（円）</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="number" id="hourlyWageInput" value="${hourlyWage}" min="0" step="10" onchange="calcWage()">
+            <button class="btn-save-wage" onclick="saveHourlyWage('${esc(staff)}')">保存</button>
+          </div>
+        </div>
+        <div class="row"><label>基本給（円）</label><span id="payBase">${payBase.toLocaleString()}</span></div>
+        <div class="row">
+          <label>運転手当</label>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <span style="font-size:12px;color:var(--muted)">${drivingCount}回 ×</span>
+            <input type="number" id="drivingWageInput" value="${drivingWageInit}" min="0" step="100" style="width:90px" onchange="calcWage()">
+            <span style="font-size:12px;color:var(--muted)">円 = <span id="drivingTotal">${drivingTotalInit.toLocaleString()}</span>円</span>
+            <button class="btn-save-wage" onclick="saveDrivingWage('${esc(staff)}')">保存</button>
+          </div>
+        </div>
+        <div class="row">
+          <label>諸手当（円）</label>
+          <input type="number" id="allowanceInput" value="0" min="0" step="100" onchange="calcWage()">
+        </div>
+        <div class="row total">
+          <label>支給額（円）</label>
+          <span id="payTotal">${(payBase+drivingTotalInit).toLocaleString()}</span>
+        </div>
+      </div>`;
+    // totalMinをグローバルに保存
+    window._wageMin = totalMin;
+    window._drivingCount = drivingCount;
+  }
+
+  function calcWage(){
+    const totalMin = window._wageMin||0;
+    const drivingCount = window._drivingCount||0;
+    const hourly = parseInt(document.getElementById('hourlyWageInput').value)||0;
+    const allowance = parseInt(document.getElementById('allowanceInput').value)||0;
+    const drivingWage = parseInt(document.getElementById('drivingWageInput').value)||0;
+    const base = Math.floor(totalMin/60*hourly + (totalMin%60)/60*hourly);
+    const drivingTotal = drivingCount * drivingWage;
+    document.getElementById('payBase').textContent = base.toLocaleString();
+    document.getElementById('drivingTotal').textContent = drivingTotal.toLocaleString();
+    document.getElementById('payTotal').textContent = (base+drivingTotal+allowance).toLocaleString();
+  }
+
+  async function saveDrivingWage(staff){
+    const drivingWage = parseInt(document.getElementById('drivingWageInput').value)||0;
+    const existing = wageData[staff];
+    if(existing&&existing.id){
+      await fetch(`${SUPABASE_URL}/rest/v1/staff_wages?id=eq.${existing.id}`,{method:'PATCH',headers:{...SB_H,'Prefer':'return=minimal'},body:JSON.stringify({driving_wage:drivingWage})});
+    } else {
+      await fetch(`${SUPABASE_URL}/rest/v1/staff_wages`,{method:'POST',headers:{...SB_H,'Prefer':'return=minimal'},body:JSON.stringify({staff_name:staff,driving_wage:drivingWage})});
+    }
+    wageData[staff]={...(wageData[staff]||{}),driving_wage:drivingWage};
+    calcWage();
+    alert('運転手当を保存しました');
+  }
+
+  async function saveHourlyWage(staff){
+    const hourly = parseInt(document.getElementById('hourlyWageInput').value)||0;
+    const existing = wageData[staff];
+    if(existing&&existing.id){
+      await fetch(`${SUPABASE_URL}/rest/v1/staff_wages?id=eq.${existing.id}`,{method:'PATCH',headers:{...SB_H,'Prefer':'return=minimal'},body:JSON.stringify({hourly_wage:hourly})});
+    } else {
+      await fetch(`${SUPABASE_URL}/rest/v1/staff_wages`,{method:'POST',headers:{...SB_H,'Prefer':'return=minimal'},body:JSON.stringify({staff_name:staff,hourly_wage:hourly})});
+    }
+    wageData[staff]={...(wageData[staff]||{}),hourly_wage:hourly};
+    calcWage();
+    alert('時給を保存しました');
+  }
 
   function init() {
     const now = new Date();

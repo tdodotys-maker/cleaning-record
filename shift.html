@@ -128,11 +128,27 @@
 
 <div class="container">
   <div class="page-tabs">
-    <button class="page-tab active" onclick="switchPage('request',this)">希望入力</button>
-    <button class="page-tab" onclick="switchPage('confirmed',this)">シフト</button>
+    <button class="page-tab active" onclick="switchPage('confirmed',this)">シフト</button>
+    <button class="page-tab" onclick="switchPage('request',this)">希望入力</button>
   </div>
 
-  <div class="page active" id="page-request">
+  <div class="page active" id="page-confirmed">
+    <div class="staff-bar">
+      <div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:2px">表示中</div>
+        <div class="sname" id="staffDisplay2">未設定</div>
+      </div>
+      <button onclick="showNameModal()">変更</button>
+    </div>
+    <div class="month-nav">
+      <button onclick="prevMonth2()">◀</button>
+      <div class="month-label" id="monthLabel2"></div>
+      <button onclick="nextMonth2()">▶</button>
+    </div>
+    <div id="confirmedArea"><div class="loading"><span class="spinner"></span>読み込み中…</div></div>
+  </div>
+
+  <div class="page" id="page-request">
     <div class="staff-bar">
       <div>
         <div style="font-size:11px;color:var(--muted);margin-bottom:2px">入力者</div>
@@ -147,22 +163,6 @@
     </div>
     <div class="hint">休みを希望する日付をタップしてください。</div>
     <div class="calendar" id="reqCalendar"></div>
-  </div>
-
-  <div class="page" id="page-confirmed">
-    <div class="staff-bar">
-      <div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:2px">表示中</div>
-        <div class="sname" id="staffDisplay2">未設定</div>
-      </div>
-      <button onclick="showNameModal()">変更</button>
-    </div>
-    <div class="month-nav">
-      <button onclick="prevMonth2()">◀</button>
-      <div class="month-label" id="monthLabel2"></div>
-      <button onclick="nextMonth2()">▶</button>
-    </div>
-    <div id="confirmedArea"><div class="loading"><span class="spinner"></span>読み込み中…</div></div>
   </div>
 </div>
 
@@ -395,7 +395,7 @@
   } else {
     document.getElementById('staffDisplay').textContent=staffName;
     document.getElementById('staffDisplay2').textContent=staffName;
-    loadReqData();
+    loadConfirmed();
   }
   document.getElementById('monthLabel').textContent=`${reqYear}年${reqMonth}月`;
   document.getElementById('monthLabel2').textContent=`${confYear}年${confMonth}月`;
