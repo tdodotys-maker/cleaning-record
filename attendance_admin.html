@@ -49,6 +49,16 @@
 
   .count-bar { font-size:12px; color:var(--muted); margin-bottom:8px; display:flex; justify-content:space-between; }
 
+  /* 印刷用 */
+  #wagePrintArea { display:none; }
+  @media print {
+    body > *:not(#wagePrintArea) { display:none !important; }
+    #wagePrintArea { display:block !important; }
+    #wagePrintArea .wage-table th { background:#1a5276 !important; color:white !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    #wagePrintArea .btn-print, #wagePrintArea .btn-save-wage, #wagePrintArea input { display:none !important; }
+    @page { margin:10mm; size:A4; }
+  }
+
   /* 給料計算 */
   .wage-table { width:100%; border-collapse:collapse; font-size:12px; margin-bottom:16px; background:var(--white); border-radius:10px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.07); }
   .wage-table th { background:var(--blue); color:white; padding:8px 6px; text-align:center; white-space:nowrap; }
@@ -173,6 +183,9 @@
       <button class="btn-wage" onclick="loadWage()">表示</button>
     </div>
     <div id="wageArea"></div>
+    <div id="wagePrintBtn" style="display:none;margin-top:10px">
+      <button class="btn-wage btn-print" onclick="printWage()" style="width:100%">📄 印刷・PDF保存</button>
+    </div>
   </div>
 </div>
 
@@ -366,7 +379,8 @@
         outT=co.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Tokyo'});
       }
       if(rec.clock_in&&rec.clock_out){
-        const diffMin=Math.round((new Date(rec.clock_out)-new Date(rec.clock_in))/60000);
+        const rawMin=Math.round((new Date(rec.clock_out)-new Date(rec.clock_in))/60000);
+        const diffMin=Math.ceil(rawMin/5)*5;
         totalMin+=diffMin;
         const h=Math.floor(diffMin/60),mn=diffMin%60;
         workT=`${h}:${String(mn).padStart(2,'0')}`;
@@ -420,6 +434,7 @@
     // totalMinをグローバルに保存
     window._wageMin = totalMin;
     window._drivingCount = drivingCount;
+    document.getElementById('wagePrintBtn').style.display='block';
   }
 
   function calcWage(){
@@ -433,6 +448,24 @@
     document.getElementById('payBase').textContent = base.toLocaleString();
     document.getElementById('drivingTotal').textContent = drivingTotal.toLocaleString();
     document.getElementById('payTotal').textContent = (base+drivingTotal+allowance).toLocaleString();
+  }
+
+  function printWage(){
+    const content = document.getElementById('wageArea').innerHTML;
+    const month = document.getElementById('wageMonth').value;
+    const staff = document.getElementById('wageStaff').value;
+    const el = document.getElementById('wagePrintArea');
+    el.innerHTML = `<h2 style="margin-bottom:12px;font-size:16px">${staff} 様　${month.replace('-','年')}月　給与明細</h2>${content}`;
+    // input要素を値テキストに変換
+    el.querySelectorAll('input[type=number]').forEach(inp=>{
+      const span=document.createElement('span');
+      span.textContent=parseInt(inp.value||0).toLocaleString()+'円';
+      span.style.fontWeight='700';
+      inp.parentNode.replaceChild(span,inp);
+    });
+    el.querySelectorAll('.btn-save-wage,.btn-print').forEach(b=>b.style.display='none');
+    window.print();
+    el.innerHTML='';
   }
 
   async function saveDrivingWage(staff){
@@ -471,6 +504,8 @@
 
   init();
 </script>
+
+<div id="wagePrintArea"></div>
 
 <footer style="text-align:center;padding:20px 16px;font-size:11px;color:var(--muted,#6b7c6e);border-top:1px solid var(--border,#c5d9c7);margin-top:20px">
   © 2026 TYS Co., Ltd. All rights reserved.
