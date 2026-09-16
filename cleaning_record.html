@@ -227,7 +227,7 @@
       </div>
       <div class="field">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
-          <label style="margin-bottom:0">🔖 次回確認事項（任意）</label>
+          <label style="margin-bottom:0">🔖 社内共有事項（任意）</label>
           <button type="button" onclick="clearNextCheck()" style="padding:3px 10px;background:var(--white);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--muted);cursor:pointer">クリア</button>
         </div>
         <textarea id="next_check" placeholder="例：ゴミステーションに◯日付の無分別ゴミあり、様子見" style="border-color:#a9cce3"></textarea>
@@ -701,7 +701,7 @@
     document.getElementById('endTime').value = '';
     // チェック項目
     document.querySelectorAll('input[name="check"], input[name="special"]').forEach(cb => cb.checked = false);
-    // 特記事項・次回確認事項
+    // 特記事項・社内共有事項
     document.getElementById('notes').value = '';
     document.getElementById('next_check').value = '';
     // 写真
@@ -860,7 +860,7 @@
         <div class="check-grid">${SPECIAL_ITEMS.map(item=>`<label class="check-item"><input type="checkbox" name="em_special" value="${esc(item)}" ${checkedSpecials.includes(item)?'checked':''}><span>${esc(item)}</span></label>`).join('')}</div>
       </div>
       <div class="field"><label>特記事項</label><textarea id="em_notes">${esc(r.notes||'')}</textarea></div>
-      <div class="field"><label>🔖 次回確認事項</label><textarea id="em_next_check" style="border-color:#a9cce3">${esc(r.next_check||'')}</textarea></div>
+      <div class="field"><label>🔖 社内共有事項</label><textarea id="em_next_check" style="border-color:#a9cce3">${esc(r.next_check||'')}</textarea></div>
       <div class="edit-modal-btns">
         <button class="btn-edit-save" onclick="saveEditModal()">更新する</button>
         <button class="btn-edit-del" onclick="deleteEditModal()">削除</button>

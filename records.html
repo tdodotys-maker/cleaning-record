@@ -264,7 +264,7 @@
     ];
     let html = fields.map(([l,v])=>`<div class="modal-row"><div class="modal-label">${l}</div><div class="modal-val">${esc(v||'—')}</div></div>`).join('');
     if (r.notes&&r.notes.trim()) html+=`<div class="modal-row"><div class="modal-label">特記事項</div><div class="modal-val"><div class="modal-notes">${esc(r.notes)}</div></div></div>`;
-    if (r.next_check&&r.next_check.trim()) html+=`<div class="modal-row"><div class="modal-label">次回確認事項</div><div class="modal-val"><div class="modal-notes" style="border-left-color:#2980b9;background:#f0f8ff">🔖 ${esc(r.next_check)}</div></div></div>`;
+    if (r.next_check&&r.next_check.trim()) html+=`<div class="modal-row"><div class="modal-label">社内共有事項</div><div class="modal-val"><div class="modal-notes" style="border-left-color:#2980b9;background:#f0f8ff">🔖 ${esc(r.next_check)}</div></div></div>`;
     // 写真
     if (r.photo_urls) {
       try {
@@ -308,7 +308,7 @@
         </div></div></div>
       <div class="modal-row"><div class="modal-label">特記事項</div>
         <div class="modal-val"><textarea id="edit_notes">${esc(r.notes||'')}</textarea></div></div>
-      <div class="modal-row"><div class="modal-label">🔖 次回確認事項</div>
+      <div class="modal-row"><div class="modal-label">🔖 社内共有事項</div>
         <div class="modal-val"><textarea id="edit_next_check" style="border-color:#a9cce3">${esc(r.next_check||'')}</textarea></div></div>
       <div class="modal-btn-row">
         <button class="btn-update" onclick="updateRecord()">更新する</button>
