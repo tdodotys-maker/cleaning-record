@@ -229,6 +229,7 @@
           ${r.photo_urls&&JSON.parse(r.photo_urls||'[]').length?`<span class="tag" style="background:#e8f4fd;color:#2980b9">📷 ${JSON.parse(r.photo_urls).length}枚</span>`:''}
         </div>
         ${hasNotes?`<div class="card-notes">📝 ${esc(r.notes)}</div>`:''}
+        ${r.next_check&&r.next_check.trim()?`<div class="card-notes" style="border-left-color:#2980b9;background:#f0f8ff">🔖 ${esc(r.next_check)}</div>`:''}
       </div>`;
     }).join('')}</div>`;
   }
@@ -263,6 +264,7 @@
     ];
     let html = fields.map(([l,v])=>`<div class="modal-row"><div class="modal-label">${l}</div><div class="modal-val">${esc(v||'—')}</div></div>`).join('');
     if (r.notes&&r.notes.trim()) html+=`<div class="modal-row"><div class="modal-label">特記事項</div><div class="modal-val"><div class="modal-notes">${esc(r.notes)}</div></div></div>`;
+    if (r.next_check&&r.next_check.trim()) html+=`<div class="modal-row"><div class="modal-label">次回確認事項</div><div class="modal-val"><div class="modal-notes" style="border-left-color:#2980b9;background:#f0f8ff">🔖 ${esc(r.next_check)}</div></div></div>`;
     // 写真
     if (r.photo_urls) {
       try {
