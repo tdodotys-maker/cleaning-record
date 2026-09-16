@@ -308,6 +308,8 @@
         </div></div></div>
       <div class="modal-row"><div class="modal-label">特記事項</div>
         <div class="modal-val"><textarea id="edit_notes">${esc(r.notes||'')}</textarea></div></div>
+      <div class="modal-row"><div class="modal-label">🔖 次回確認事項</div>
+        <div class="modal-val"><textarea id="edit_next_check" style="border-color:#a9cce3">${esc(r.next_check||'')}</textarea></div></div>
       <div class="modal-btn-row">
         <button class="btn-update" onclick="updateRecord()">更新する</button>
         <button class="btn-delete" onclick="deleteRecord()">削除</button>
@@ -342,6 +344,7 @@
     const start = document.getElementById('edit_start').value;
     const end = document.getElementById('edit_end').value;
     const notes = document.getElementById('edit_notes').value;
+    const next_check = document.getElementById('edit_next_check').value;
     const checks = [...document.querySelectorAll('input[name="edit_check"]:checked')].map(c=>c.value);
     const specials = [...document.querySelectorAll('input[name="edit_special"]:checked')].map(c=>c.value);
     if (!date||!weather||!start||!end) { alert('実施日・天候・時刻は必須です'); return; }
@@ -350,7 +353,7 @@
     const res = await fetch(`${SUPABASE_URL}/rest/v1/cleaning_records?id=eq.${r.id}`, {
       method:'PATCH',
       headers:{...SB_H,'Content-Type':'application/json','Prefer':'return=minimal'},
-      body: JSON.stringify({ cleaning_date:date, weather, start_time:start, end_time:end, check_items:checks.join('／'), special_items:specials.join('／'), notes })
+      body: JSON.stringify({ cleaning_date:date, weather, start_time:start, end_time:end, check_items:checks.join('／'), special_items:specials.join('／'), notes, next_check })
     });
     btn.textContent='更新する'; btn.disabled=false;
     if (res.ok) {
