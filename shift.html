@@ -146,6 +146,7 @@
       <button onclick="nextMonth2()">▶</button>
     </div>
     <div id="confirmedArea"><div class="loading"><span class="spinner"></span>読み込み中…</div></div>
+    <div id="drivingArea"></div>
   </div>
 
   <div class="page" id="page-request">
@@ -163,6 +164,8 @@
     </div>
     <div class="hint">休みを希望する日付をタップしてください。</div>
     <div class="calendar" id="reqCalendar"></div>
+    <div id="lockStatusArea" style="margin-top:10px"></div>
+    <button id="btnConfirmLock" onclick="confirmLock()" style="width:100%;margin-top:10px;padding:13px;background:var(--green);color:white;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;display:none">✅ 休み希望を確定する</button>
   </div>
 </div>
 
@@ -216,6 +219,45 @@
   }
   document.getElementById('nameInput').addEventListener('keydown',e=>{if(e.key==='Enter')saveName();});
 
+  let _lockData = null;
+
+  async function loadLockStatus(){
+    if(!staffName) return;
+    const ym = `${reqYear}-${String(reqMonth).padStart(2,'0')}`;
+    const rows = await sbGet('shift_request_locks',`?staff_name=eq.${encodeURIComponent(staffName)}&lock_month=eq.${ym}`);
+    _lockData = rows.length ? rows[0] : null;
+    const locked = _lockData && _lockData.locked;
+    const statusArea = document.getElementById('lockStatusArea');
+    const lockBtn = document.getElementById('btnConfirmLock');
+    if(locked){
+      statusArea.innerHTML = `<div style="background:#fde8e8;border-radius:8px;padding:10px 14px;font-size:12px;color:var(--red);font-weight:700;text-align:center">🔒 ${reqYear}年${reqMonth}月の希望は確定済みです</div>`;
+      lockBtn.style.display = 'none';
+    } else {
+      statusArea.innerHTML = '';
+      lockBtn.style.display = 'block';
+    }
+    // カレンダーのタップを制御
+    document.getElementById('reqCalendar').style.pointerEvents = locked ? 'none' : 'auto';
+    document.getElementById('reqCalendar').style.opacity = locked ? '0.6' : '1';
+  }
+
+  async function confirmLock(){
+    const ym = `${reqYear}-${String(reqMonth).padStart(2,'0')}`;
+    if(!confirm(`${reqYear}年${reqMonth}月の休み希望を確定します。\n確定後は変更できなくなります。\nよろしいですか？`)) return;
+    if(_lockData){
+      await fetch(`${SUPABASE_URL}/rest/v1/shift_request_locks?id=eq.${_lockData.id}`,{
+        method:'PATCH',headers:{...SB_H,'Prefer':'return=minimal'},
+        body:JSON.stringify({locked:true, lock_month:ym})
+      });
+    } else {
+      await fetch(`${SUPABASE_URL}/rest/v1/shift_request_locks`,{
+        method:'POST',headers:{...SB_H,'Prefer':'return=minimal'},
+        body:JSON.stringify({staff_name:staffName, lock_month:ym, locked:true})
+      });
+    }
+    loadLockStatus();
+  }
+
   async function loadReqData(){
     if(!staffName)return;
     const ym=`${reqYear}-${String(reqMonth).padStart(2,'0')}`;
@@ -225,6 +267,7 @@
     reqData={};
     rows.forEach(r=>{reqData[r.work_date]=r;});
     renderCalendar();
+    await loadLockStatus();
   }
 
   function renderCalendar(){ 
@@ -307,13 +350,24 @@
     const totalDays=new Date(confYear,confMonth,0).getDate();
     document.getElementById('monthLabel2').textContent=`${confYear}年${confMonth}月`;
     document.getElementById('confirmedArea').innerHTML=`<div class="loading"><span class="spinner"></span>読み込み中…</div>`;
+    document.getElementById('drivingArea').innerHTML='';
 
-    // シフトと休み希望を並行取得
-    const [shiftRows, reqRows, settingRows]=await Promise.all([
+    // シフトと休み希望と勤怠を並行取得
+    const attendQ = staffName ? sbGet('attendance',`?staff_name=eq.${encodeURIComponent(staffName)}&work_date=gte.${ym}-01&work_date=lte.${ym}-${String(totalDays).padStart(2,'0')}`) : Promise.resolve([]);
+    const [shiftRows, reqRows, settingRows, attendRows]=await Promise.all([
       sbGet('shifts',`?work_date=gte.${ym}-01&work_date=lte.${ym}-${String(totalDays).padStart(2,'0')}&order=work_date.asc`),
       sbGet('shift_requests',`?work_date=gte.${ym}-01&work_date=lte.${ym}-${String(totalDays).padStart(2,'0')}&order=staff_name.asc`),
-      sbGet('settings',`?key=eq.shift_staff_order`)
+      sbGet('settings',`?key=eq.shift_staff_order`),
+      attendQ
     ]);
+
+    // 当月運転回数を表示
+    const drivingCount = attendRows.filter(r=>r.driving).length;
+    document.getElementById('drivingArea').innerHTML=`
+      <div style="background:var(--white);border-radius:10px;padding:10px 14px;margin-top:10px;box-shadow:0 1px 4px rgba(0,0,0,.07);display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:13px;color:var(--muted)">🚗 当月運転回数</span>
+        <span style="font-size:18px;font-weight:700;color:var(--green)">${drivingCount}回</span>
+      </div>`;
 
     // 並び順
     let staffOrder=[];
@@ -387,6 +441,20 @@
     }
     html+=`</tbody></table></div>`;
     area.innerHTML=html;
+
+    // 全スタッフの当月運転回数を取得して表示
+    const allAttend = await sbGet('attendance',`?work_date=gte.${ym}-01&work_date=lte.${ym}-${String(totalDays).padStart(2,'0')}&driving=is.true`);
+    const driveMap = {};
+    allAttend.forEach(r=>{ driveMap[r.staff_name]=(driveMap[r.staff_name]||0)+1; });
+    const driveStaff = orderedStaff.filter(s=>driveMap[s]);
+    document.getElementById('drivingArea').innerHTML = driveStaff.length ? `
+      <div style="background:var(--white);border-radius:10px;padding:12px 14px;margin-top:10px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">🚗 当月運転回数</div>
+        ${driveStaff.map(s=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0f4f0;font-size:13px">
+          <span${s===staffName?' style="font-weight:700;color:var(--green)"':''}>${esc(s)}</span>
+          <span style="font-weight:700">${driveMap[s]}回</span>
+        </div>`).join('')}
+      </div>` : '';
   }
 
   // 初期化

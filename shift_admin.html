@@ -218,14 +218,24 @@ async function loadReqMatrix(){
   document.getElementById('reqArea').innerHTML='<div class="loading"><span class="spinner"></span>読み込み中…</div>';
   const from=`${year}-${pad(month)}-01`;
   const to=`${year}-${pad(month)}-${pad(lastDay(year,month))}`;
-  const rows=await sbGet('shift_requests',`?work_date=gte.${from}&work_date=lte.${to}&order=staff_name.asc,work_date.asc`);
+  const ym=`${year}-${pad(month)}`;
+  const [rows, lockRows]=await Promise.all([
+    sbGet('shift_requests',`?work_date=gte.${from}&work_date=lte.${to}&order=staff_name.asc,work_date.asc`),
+    sbGet('shift_request_locks',`?lock_month=eq.${ym}&locked=is.true`)
+  ]);
+  const lockedStaff=new Set(lockRows.map(r=>r.staff_name));
   if(!rows.length){document.getElementById('reqArea').innerHTML='<div class="empty">希望入力がありません</div>';return;}
   staffList=[...new Set(rows.map(r=>r.staff_name))].sort();
   const mat={};
   rows.forEach(r=>{if(!mat[r.staff_name])mat[r.staff_name]={};mat[r.staff_name][r.work_date]=r.request_type;});
   const total=lastDay(year,month);
   const today=todayStr();
-  let html='<div class="matrix-wrap"><table><thead><tr><th style="min-width:80px;text-align:left;padding:7px 10px">日付</th><th style="background:#1e5c3a;min-width:50px">出勤可</th>'+staffList.map(s=>`<th>${esc(s)}</th>`).join('')+'</tr></thead><tbody>';
+  const lockBtns=staffList.filter(s=>lockedStaff.has(s)).map(s=>
+    `<span style="display:inline-flex;align-items:center;gap:4px;margin:3px;padding:4px 8px;background:#fde8e8;border-radius:6px;font-size:11px;font-weight:700;color:var(--red)">🔒${esc(s)}<button onclick="unlockStaff('${esc(s)}')" style="padding:2px 7px;background:white;border:1.5px solid #f5c6c6;border-radius:4px;font-size:10px;color:var(--red);cursor:pointer;font-weight:700">解除</button></span>`
+  ).join('');
+  let html=(lockBtns?`<div style="margin-bottom:10px;background:#fff5f5;border-radius:8px;padding:8px 10px"><b style="font-size:12px;color:var(--red)">🔒 確定済み：</b>${lockBtns}</div>`:'')+
+    '<div class="matrix-wrap"><table><thead><tr><th style="min-width:80px;text-align:left;padding:7px 10px">日付</th><th style="background:#1e5c3a;min-width:50px">出勤可</th>'+
+    staffList.map(s=>`<th style="${lockedStaff.has(s)?'color:#e74c3c':''}">${esc(s)}${lockedStaff.has(s)?'🔒':''}</th>`).join('')+'</tr></thead><tbody>';
   for(let d=1;d<=total;d++){
     const ds=`${year}-${pad(month)}-${pad(d)}`;
     const dow=new Date(year,month-1,d).getDay();
@@ -238,6 +248,19 @@ async function loadReqMatrix(){
   }
   html+='</tbody></table></div>';
   document.getElementById('reqArea').innerHTML=html;
+}
+
+async function unlockStaff(staffName){
+  if(!confirm(`${staffName}さんの確定を解除しますか？`)) return;
+  const ym=`${year}-${pad(month)}`;
+  const rows=await sbGet('shift_request_locks',`?staff_name=eq.${encodeURIComponent(staffName)}&lock_month=eq.${ym}`);
+  if(rows.length){
+    await fetch(`${SUPABASE_URL}/rest/v1/shift_request_locks?id=eq.${rows[0].id}`,{
+      method:'PATCH',headers:{...SB_H,'Prefer':'return=minimal'},
+      body:JSON.stringify({locked:false})
+    });
+  }
+  loadReqMatrix();
 }
 
 // コースパレット
