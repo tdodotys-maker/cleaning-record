@@ -266,13 +266,22 @@ async function unlockStaff(staffName){
 // コースパレット
 function renderPalette(){
   const countMap={};
-  Object.values(shiftMap).forEach(list=>{list.forEach(cv=>{countMap[cv.courseCode]=(countMap[cv.courseCode]||0)+1;});});
+  const dateMap={};
+  Object.entries(shiftMap).forEach(([ds,list])=>{
+    list.forEach(cv=>{
+      countMap[cv.courseCode]=(countMap[cv.courseCode]||0)+1;
+      if(!dateMap[cv.courseCode])dateMap[cv.courseCode]=[];
+      const d=parseInt(ds.split('-')[2]);
+      dateMap[cv.courseCode].push(d);
+    });
+  });
   document.getElementById('paletteItems').innerHTML=courses.map((c,i)=>{
     const cnt=countMap[c.code]||0;
+    const dates=(dateMap[c.code]||[]).sort((a,b)=>a-b).join('・');
     return `<div class="palette-item ${colorOf(i)}" draggable="true" id="pal-${i}"
       ondragstart="onDragStart(event,'${esc(c.code)}','${esc(c.name)}',${i})"
       onclick="onPaletteClick(event,'${esc(c.code)}','${esc(c.name)}',${i})"
-    >${esc(c.name)}<span style="display:block;font-size:10px;font-weight:400;margin-top:2px">${cnt}件</span></div>`;
+    >${esc(c.name)}<span style="display:block;font-size:10px;font-weight:400;margin-top:2px">${cnt}件${dates?'<br>'+dates+'日':''}  </span></div>`;
   }).join('');
 }
 function selectCustomCourse() {
