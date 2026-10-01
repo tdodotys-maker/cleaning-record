@@ -237,9 +237,15 @@
     <div class="section">
       <div class="section-header">📷 写真（任意）</div>
       <div class="photo-area">
-        <label class="photo-upload-btn" for="photoInput">
-          📷 写真を選択（複数可）
-        </label>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <label class="photo-upload-btn" for="cameraInput" style="flex:1;text-align:center">
+            📸 カメラで撮影
+          </label>
+          <label class="photo-upload-btn" for="photoInput" style="flex:1;text-align:center;background:var(--green-pale);color:var(--green);border:1.5px solid var(--green-light)">
+            🖼 ライブラリから選択
+          </label>
+        </div>
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" multiple style="display:none" onchange="onPhotoSelect(event)">
         <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="onPhotoSelect(event)">
         <div style="margin-top:10px;padding:10px 12px;background:var(--green-pale);border-radius:8px;border-left:3px solid var(--green-light)">
           <div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:4px">写真撮影時の注意点</div>

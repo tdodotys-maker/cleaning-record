@@ -62,6 +62,12 @@
 
   /* 印刷用レポート（非表示） */
   #printArea { display:none; }
+  .report-page-title { display:none; }
+  .report-company-info { display:none; position:fixed; bottom:10mm; right:10mm; font-size:9px; line-height:1.6; color:#333; text-align:right; }
+  @media print {
+    .report-page-title { display:block; text-align:center; font-size:20px; font-weight:800; color:#2d6a4f; margin-bottom:14px; padding-bottom:10px; border-bottom:2px solid #2d6a4f; }
+    .report-company-info { display:block; position:fixed; bottom:8mm; right:8mm; font-size:12px; line-height:1.7; color:#555; text-align:right; }
+  }
 
   @media print {
     body > *:not(#printArea):not(#listPrintArea) { display:none !important; }
@@ -73,7 +79,10 @@
     #listPrintArea th, #listPrintArea td { position:static !important; }
     #listPrintArea .m-date-cell { position:static !important; }
     #listPrintArea .m-table th { background:#2d6a4f !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-    @page { margin:10mm; size:A4 landscape; }
+    @page { margin:15mm 10mm 30mm 10mm; size:A4 portrait; }
+    #wagePrintArea .btn-download, #printArea .btn-download { display:none !important; }
+    .report-page-title { display:block !important; }
+    .report-company-info { display:block !important; }
     .print-header { text-align:center; margin-bottom:20px; border-bottom:2px solid #2d6a4f; padding-bottom:12px; }
     .print-header h1 { font-size:20px; font-weight:700; color:#2d6a4f; }
     .print-header p { font-size:13px; color:#6b7c6e; margin-top:4px; }
@@ -119,6 +128,12 @@
         <input type="month" id="reportMonth">
       </div>
       <div class="field">
+        <label>グループ（管理会社）</label>
+        <select id="reportGroup" onchange="onGroupChange()">
+          <option value="">すべてのグループ</option>
+        </select>
+      </div>
+      <div class="field">
         <label>コース</label>
         <select id="reportCourse" onchange="onCourseChange()">
           <option value="">選択してください</option>
@@ -129,6 +144,14 @@
         <select id="reportProperty" disabled>
           <option value="">まずコースを選択してください</option>
         </select>
+      </div>
+      <div class="field">
+        <label>出力する項目</label>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <button type="button" onclick="checkAllReport(true)" style="padding:5px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;background:var(--green-pale);color:var(--green);font-weight:700;cursor:pointer">全選択</button>
+          <button type="button" onclick="checkAllReport(false)" style="padding:5px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;background:var(--white);color:var(--muted);font-weight:700;cursor:pointer">全解除</button>
+        </div>
+        <div id="reportColCheckboxes" style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px"></div>
       </div>
       <button class="btn-generate" id="btnGenerate" onclick="generateReport()">プレビューを生成</button>
     </div>
@@ -177,6 +200,12 @@
 
   let _courses = [], _records = [];
 
+  function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  const CHECK_COLS = ['入口周り','ポスト・掲示板','通路','階段・手すり','各玄関ドア・機器','消火器','天井・クモの巣','照明','ゴミボックス','駐輪場・ポール','駐車場','植栽','水路','クモの巣多し','除草剤散布','落ち葉多し','階段拭き','照明（球切れ等）','砂取り','特記事項'];
+  const DAYS = ['日','月','火','水','木','金','土'];
+  const HOLIDAYS = new Set(['2026-01-01','2026-01-12','2026-02-11','2026-02-23','2026-03-20','2026-04-29','2026-05-03','2026-05-04','2026-05-05','2026-05-06','2026-07-20','2026-08-11','2026-09-21','2026-09-22','2026-09-23','2026-10-12','2026-11-03','2026-11-23','2026-12-23']);
+
   function switchTab(name, el) {
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     document.querySelectorAll('.page-tab').forEach(t=>t.classList.remove('active'));
@@ -193,16 +222,33 @@
         ${esc(col)}
       </label>`
     ).join('');
-    // 全チェックをJSで設定
     document.querySelectorAll('.col-check').forEach(cb => { cb.checked = true; });
+
+    // 個別出力用チェックボックスも初期化
+    const el2 = document.getElementById('reportColCheckboxes');
+    el2.innerHTML = CHECK_COLS.filter(c=>c!=='特記事項').map(col =>
+      `<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+        <input type="checkbox" class="report-col-check" value="${esc(col)}">
+        ${esc(col)}
+      </label>`
+    ).join('');
+    document.querySelectorAll('.report-col-check').forEach(cb => { cb.checked = true; });
   }
 
   function checkAll(val) {
     document.querySelectorAll('.col-check').forEach(cb => cb.checked = val);
   }
 
+  function checkAllReport(val) {
+    document.querySelectorAll('.report-col-check').forEach(cb => cb.checked = val);
+  }
+
   function getSelectedCols() {
     return [...document.querySelectorAll('.col-check:checked')].map(cb => cb.value);
+  }
+
+  function getSelectedReportCols() {
+    return [...document.querySelectorAll('.report-col-check:checked')].map(cb => cb.value);
   }
 
   async function generateList() {
@@ -313,9 +359,6 @@
     return r.json();
   }
 
-  // 今月をデフォルト
-  const now = new Date();
-
   // コース・物件読み込み
   async function loadCourses() {
     try {
@@ -323,7 +366,9 @@
       const mappings = await sbGet('course_properties', '?order=sort_order.asc');
       const properties = await sbGet('properties');
       const propMap = {};
-      properties.forEach(p => { propMap[p.code] = p; });
+      const _propGroupMap = {};
+      properties.forEach(p => { propMap[p.code] = p; _propGroupMap[p.code] = p.group_name || ''; });
+      window._propGroupMap = _propGroupMap;
       _courses = courses.map(c => ({
         code: c.code, name: c.name,
         properties: mappings.filter(m=>m.course_code===c.code).map(m=>propMap[m.property_code]).filter(Boolean)
@@ -341,108 +386,289 @@
       // グループ選択肢を追加
       const groups = [...new Set(properties.map(p=>p.group_name).filter(Boolean))].sort();
       const selGroup = document.getElementById('listGroup');
+      const selReportGroup = document.getElementById('reportGroup');
       groups.forEach(g => {
         const o = document.createElement('option');
         o.value = g; o.textContent = g;
         selGroup.appendChild(o);
+        const o2 = document.createElement('option');
+        o2.value = g; o2.textContent = g;
+        selReportGroup.appendChild(o2);
       });
-    } catch(e) {}
+    } catch(e) { console.error('loadCourses error:', e); }
+  }
+
+  // グループで物件を絞り込む
+  function onGroupChange() {
+    const group = document.getElementById('reportGroup').value;
+    const propSel = document.getElementById('reportProperty');
+    const courseSel = document.getElementById('reportCourse');
+    courseSel.innerHTML = '<option value="">選択してください</option>';
+    _courses.forEach((c,i) => {
+      if (group) {
+        const hasGroup = c.properties.some(p => (window._propGroupMap||{})[p.code] === group);
+        if (!hasGroup) return;
+      }
+      const o = document.createElement('option');
+      o.value = i; o.textContent = c.name;
+      courseSel.appendChild(o);
+    });
+    propSel.innerHTML = '<option value="">まずコースを選択してください</option>';
+    propSel.disabled = true;
   }
 
   function onCourseChange() {
     const idx = document.getElementById('reportCourse').value;
+    const group = document.getElementById('reportGroup').value;
     const propSel = document.getElementById('reportProperty');
     if (idx === '') { propSel.innerHTML='<option value="">まずコースを選択してください</option>'; propSel.disabled=true; return; }
-    const props = _courses[idx].properties;
-    propSel.innerHTML = '<option value="">選択してください</option>';
+    let props = _courses[idx].properties;
+    if (group) props = props.filter(p => (window._propGroupMap||{})[p.code] === group);
+    propSel.innerHTML = '<option value="">選択してください（省略可）</option>';
     props.forEach(p => { const o=document.createElement('option'); o.value=JSON.stringify({code:p.code,name:p.name}); o.textContent=p.name; propSel.appendChild(o); });
     propSel.disabled = false;
   }
 
   async function generateReport() {
     const month = document.getElementById('reportMonth').value;
-    const propRaw = document.getElementById('reportProperty').value;
     if (!month) { alert('対象月を選択してください'); return; }
-    if (!propRaw) { alert('物件を選択してください'); return; }
-    const prop = JSON.parse(propRaw);
+
+    const group = document.getElementById('reportGroup').value;
+    const courseIdx = document.getElementById('reportCourse').value;
+    const propRaw = document.getElementById('reportProperty').value;
+
     const btn = document.getElementById('btnGenerate');
     btn.textContent = '読み込み中…'; btn.disabled = true;
 
     try {
+      const [y,m] = month.split('-').map(Number);
+      const lastD = new Date(y,m,0).getDate();
       const from = `${month}-01`;
-      const to = `${month}-31`;
-      const records = await sbGet('cleaning_records',
-        `?property_code=eq.${prop.code}&cleaning_date=gte.${from}&cleaning_date=lte.${to}&deleted=is.false&order=cleaning_date.asc`);
-      _records = records;
-      renderPreview(prop, month, records);
+      const to = `${month}-${String(lastD).padStart(2,'0')}`;
+
+      // 対象物件リストを決定
+      let targetProps = [];
+      if (propRaw) {
+        // 物件指定あり
+        targetProps = [JSON.parse(propRaw)];
+      } else if (courseIdx !== '') {
+        // コース指定あり
+        let props = _courses[courseIdx].properties;
+        if (group) props = props.filter(p => (window._propGroupMap||{})[p.code] === group);
+        targetProps = props.map(p=>({code:p.code,name:p.name}));
+      } else if (group) {
+        // グループのみ指定
+        const allProps = _courses.flatMap(c=>c.properties);
+        const seen = new Set();
+        targetProps = allProps.filter(p=>{
+          if ((window._propGroupMap||{})[p.code]===group && !seen.has(p.code)) { seen.add(p.code); return true; }
+          return false;
+        }).map(p=>({code:p.code,name:p.name}));
+      } else {
+        alert('グループ・コース・物件のいずれかを選択してください'); btn.textContent='プレビューを生成'; btn.disabled=false; return;
+      }
+
+      if (!targetProps.length) { alert('対象物件がありません'); btn.textContent='プレビューを生成'; btn.disabled=false; return; }
+
+      // 全対象物件のレコードを取得
+      const allRecords = await sbGet('cleaning_records',
+        `?cleaning_date=gte.${from}&cleaning_date=lte.${to}&deleted=is.false&order=property_name.asc,cleaning_date.asc`);
+
+      _records = allRecords;
+      await renderPreviewMulti(targetProps, month, allRecords);
     } catch(e) {
       alert('データの取得に失敗しました');
     }
     btn.textContent = 'プレビューを生成'; btn.disabled = false;
   }
 
-  const CHECK_COLS = ['入口周り','ポスト・掲示板','通路','階段・手すり','各玄関ドア・機器','消火器','天井・クモの巣','照明','ゴミボックス','駐輪場・ポール','駐車場','植栽','水路','クモの巣多し','除草剤散布','落ち葉多し','階段拭き','照明（球切れ等）','砂取り','特記事項'];
-  const DAYS = ['日','月','火','水','木','金','土'];
-  const HOLIDAYS = new Set(['2026-01-01','2026-01-12','2026-02-11','2026-02-23','2026-03-20','2026-04-29','2026-05-03','2026-05-04','2026-05-05','2026-05-06','2026-07-20','2026-08-11','2026-09-21','2026-09-22','2026-09-23','2026-10-12','2026-11-03','2026-11-23','2026-12-23']);
 
-  function renderPreview(prop, month, records) {
+  async function renderPreviewMulti(targetProps, month, allRecords) {
     const [y,m] = month.split('-');
     const area = document.getElementById('previewArea');
-    if (!records.length) {
-      area.innerHTML = `<div class="card"><div class="empty">この期間の記録がありません</div></div>`;
-      return;
+    let html = '';
+    let totalCount = 0;
+    const selectedCols = getSelectedReportCols();
+
+    // 物件マスタ取得（住所・グループ名）
+    const allProps = await sbGet('properties','');
+    const propMasterMap = {};
+    allProps.forEach(p=>{ propMasterMap[p.code]=p; });
+
+    // report_notes取得
+    const rnotesAll = await sbGet('report_notes',`?report_month=eq.${month}`);
+    const rnotesMap = {};
+    rnotesAll.forEach(n=>{ rnotesMap[n.property_code]={id:n.id, notes:n.notes}; });
+
+    // グループ絞り込み
+    const group = document.getElementById('reportGroup')?.value || '';
+
+    for (const prop of targetProps) {
+      // グループ絞り込みチェック
+      if (group) {
+        const pm2 = propMasterMap[prop.code]||{};
+        if ((pm2.group_name||'') !== group) continue;
+      }
+
+      const records = allRecords.filter(r=>r.property_code===prop.code);
+      if (!records.length) continue;
+      totalCount += records.length;
+
+      const pm = propMasterMap[prop.code] || {};
+      const address = pm.address || '';
+      const groupName = pm.group_name || '';
+      const rnote = rnotesMap[prop.code] || {};
+
+      // 縦＝項目、横＝実施日のマトリクス
+      const dates = records.map(r=>{
+        const [ry,rm,rd] = r.cleaning_date.split('-').map(Number);
+        const dow = DAYS[new Date(ry,rm-1,rd).getDay()];
+        const hol = HOLIDAYS.has(r.cleaning_date);
+        const dow2 = new Date(ry,rm-1,rd).getDay();
+        const color = hol||dow2===0?'color:#e74c3c':dow2===6?'color:#2980b9':'';
+        return {r, rd, dow, color};
+      });
+
+      // 各実施回のチェックセット
+      const checkSets = dates.map(({r})=>new Set([
+        ...(r.check_items?r.check_items.split('／').filter(Boolean):[]),
+        ...(r.special_items?r.special_items.split('／').filter(Boolean):[])
+      ]));
+
+      // 特記事項（管理者確認用・印刷には出さない）
+      const notesForAdmin = dates.filter(({r})=>r.notes&&r.notes.trim()).map(({rd,dow,r})=>`${rd}日（${dow}）：${r.notes}`).join('\n');
+
+      let matHtml = `<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px">
+        <thead><tr>
+          <th style="text-align:left;padding:6px 8px;background:#2d6a4f;color:white;min-width:120px">清掃内容</th>
+          ${dates.map(({rd,dow,color})=>`<th style="text-align:center;padding:6px 4px;background:#2d6a4f;color:white;min-width:50px"><span style="${color}">${rd}日<br>（${dow}）</span></th>`).join('')}
+        </tr></thead><tbody>`;
+
+      selectedCols.forEach((col,ci)=>{
+        const bg = ci%2===0?'background:#f9fcf9':'background:white';
+        matHtml+=`<tr style="${bg}">
+          <td style="padding:5px 8px;border:1px solid #e0ede0">${esc(col)}</td>
+          ${checkSets.map(cs=>`<td style="text-align:center;padding:5px;border:1px solid #e0ede0">${cs.has(col)?'✓':''}</td>`).join('')}
+        </tr>`;
+      });
+      matHtml += '</tbody></table>';
+
+      html += `<div class="prop-report-card" style="background:white;border-radius:12px;padding:16px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+        <div style="margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid var(--green)">
+          <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:8px">${y}年${parseInt(m)}月</div>
+          <div style="font-size:16px;font-weight:800;color:var(--green);margin-bottom:6px"><span style="font-size:12px;font-weight:400;color:var(--muted)">物件名　</span>${esc(prop.name)}</div>
+          ${address?`<div style="font-size:14px;font-weight:700;margin-bottom:4px"><span style="font-size:12px;font-weight:400;color:var(--muted)">住所　</span>${esc(address)}</div>`:''}
+          ${groupName?`<div style="font-size:14px;font-weight:700;margin-bottom:4px"><span style="font-size:12px;font-weight:400;color:var(--muted)">管理者　</span>${esc(groupName)}</div>`:''}
+        </div>
+        ${matHtml}
+        <div style="margin-top:10px">
+          <div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:6px">📋 報告事項</div>
+          ${notesForAdmin?`<div style="font-size:11px;color:var(--muted);margin-bottom:6px;padding:6px 10px;background:#fffbf0;border-left:3px solid var(--orange);border-radius:0 6px 6px 0">【特記事項の参照】${esc(notesForAdmin)}</div>`:''}
+          <textarea id="rn-${esc(prop.code)}" style="width:100%;min-height:60px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;padding:8px" placeholder="報告事項を入力">${esc(rnote.notes||(notesForAdmin?'':'異常ありませんでした。'))}</textarea>
+          <button onclick="saveReportNote('${esc(prop.code)}','${month}')" style="margin-top:4px;padding:5px 14px;background:var(--green-pale);border:1.5px solid var(--green-light);border-radius:6px;font-size:11px;font-weight:700;color:var(--green);cursor:pointer">💾 保存</button>
+        </div>
+      </div>`;
     }
 
-    // マトリクス生成
-    let matHtml = `<div class="m-table-wrap"><table class="m-table"><thead><tr>
-      <th>実施日</th>
-      <th>天候</th>
-      ${CHECK_COLS.map(col=>`<th style="writing-mode:vertical-rl;text-orientation:mixed;min-width:22px;padding:8px 3px;font-size:10px">${esc(col)}</th>`).join('')}
-      <th style="min-width:100px;text-align:left">特記事項</th>
-    </tr></thead><tbody>`;
+    if (!totalCount) { area.innerHTML=`<div class="card"><div class="empty">この期間の記録がありません</div></div>`; return; }
 
-    records.forEach(r => {
-      const ds = r.cleaning_date || '';
-      const parts = ds ? ds.split('-').map(Number) : [0,0,0];
-      const [ry,rm,rd] = parts;
-      const dow = ds ? DAYS[new Date(ry,rm-1,rd).getDay()] : '';
-      const hol = HOLIDAYS.has(ds);
-      const dow2 = ds ? new Date(ry,rm-1,rd).getDay() : -1;
-      const dateCls = hol||dow2===0 ? 'color:var(--red)' : dow2===6 ? 'color:var(--blue)' : '';
-      const checks = new Set([
-        ...(r.check_items ? r.check_items.split('／').filter(Boolean) : []),
-        ...(r.special_items ? r.special_items.split('／').filter(Boolean) : [])
-      ]);
-      matHtml += `<tr>
-        <td class="m-date-cell" style="${dateCls}">${rd}（${dow}）${hol?'<span style="font-size:9px"> 祝</span>':''}</td>
-        <td>${esc(r.weather||'')}</td>
-        ${CHECK_COLS.map(col=>`<td>${checks.has(col)?'<span class="m-check">✓</span>':''}</td>`).join('')}
-        <td style="text-align:left;padding:4px 6px;color:var(--orange)">${r.notes?esc(r.notes):''}</td>
-      </tr>`;
-    });
-    matHtml += '</tbody></table></div>';
+    area.innerHTML = `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h2>📋 プレビュー</h2><span class="count-tag">${totalCount}件</span>
+      </div>
+      ${html}
+      <button class="btn-download" onclick="printReportMulti('${y}','${m}')">📄 PDFとして印刷・保存</button>
+    </div>`;
+  }
 
-    // 写真プレビュー
-    const recHTML = records.map(r => {
-      const photos = r.photo_urls ? JSON.parse(r.photo_urls) : [];
-      if (!photos.length) return '';
-      return `<div class="record-preview">
-        <div class="date">${r.cleaning_date}（${r.weather}）${r.staff_name ? `<span style="font-size:11px;color:var(--muted);margin-left:8px">${esc(r.staff_name)}</span>` : ''}</div>
-        <div class="photo-thumbs">${photos.map(url=>`<img src="${url}" alt="清掃写真" onerror="this.style.display='none'">`).join('')}</div>
-      </div>`;
-    }).join('');
+  async function printReportMulti(y, m) {
+    const month = `${y}-${m}`;
+    const SPECIAL_COLS = new Set(['クモの巣多し','落ち葉多し','階段拭き','照明（球切れ等）','砂取り']);
+    const selectedCols = getSelectedReportCols().filter(col=>!SPECIAL_COLS.has(col));
+    const group = document.getElementById('reportGroup')?.value || '';
+    const allProps = await sbGet('properties','');
+    const propMasterMap = {};
+    allProps.forEach(p=>{ propMasterMap[p.code]=p; });
+    const rnotesAll = await sbGet('report_notes',`?report_month=eq.${month}`);
+    const rnotesMap = {};
+    rnotesAll.forEach(n=>{ rnotesMap[n.property_code]={notes:n.notes}; });
 
-    area.innerHTML = `
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <h2>📋 プレビュー</h2>
-          <span class="count-tag">${records.length}件</span>
+    const propCodes = [...new Set(_records.map(r=>r.property_code))];
+    let html = '';
+    let isFirst = true;
+
+    for (const code of propCodes) {
+      const pm = propMasterMap[code]||{};
+      if (group && (pm.group_name||'') !== group) continue;
+      const records = _records.filter(r=>r.property_code===code);
+      if (!records.length) continue;
+      const rnote = rnotesMap[code]||{};
+
+      const dates = records.map(r=>{
+        const [ry,rm,rd] = r.cleaning_date.split('-').map(Number);
+        const dow = DAYS[new Date(ry,rm-1,rd).getDay()];
+        return {r,rd,dow};
+      });
+      const checkSets = dates.map(({r})=>new Set([
+        ...(r.check_items?r.check_items.split('／').filter(Boolean):[]),
+        ...(r.special_items?r.special_items.split('／').filter(Boolean):[])
+      ]));
+
+      let matHtml = `<table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead><tr>
+          <th style="text-align:left;padding:5px 6px;background:#2d6a4f;color:white;min-width:100px">清掃内容</th>
+          ${dates.map(({rd,dow,r})=>`<th style="text-align:center;padding:5px 3px;background:#2d6a4f;color:white;min-width:40px">${rd}日<br>（${dow}）<br>${esc(r.weather||'')}</th>`).join('')}
+        </tr></thead><tbody>`;
+
+      selectedCols.forEach((col,ci)=>{
+        matHtml+=`<tr style="background:${ci%2===0?'#f9fcf9':'white'}">
+          <td style="padding:5px 7px;border:1px solid #ddd">${esc(col)}</td>
+          ${checkSets.map(cs=>`<td style="text-align:center;padding:6px;border:1px solid #ddd;font-size:12px;min-height:24px">${cs.has(col)?'✓':'　'}</td>`).join('')}
+        </tr>`;
+      });
+      matHtml += '</tbody></table>';
+
+      // 報告事項はtextareaの現在値を使用
+      const taEl = document.getElementById('rn-'+code);
+      const reportNotes = taEl ? taEl.value : (rnote.notes||(notesForPrint?'':'異常ありませんでした。'));
+
+      // 特記事項をまとめる
+      const notesForPrint = dates.filter(({r})=>r.notes&&r.notes.trim()).map(({rd,dow,r})=>`${rd}日（${dow}）：${r.notes}`).join('\n');
+
+      const pageBreak = isFirst ? '' : 'page-break-before:always';
+      isFirst = false;
+      html += `<div style="margin-bottom:24px;${pageBreak}">
+        <div class="report-page-title">清掃作業報告書</div>
+        <div style="margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #2d6a4f">
+          <div style="font-size:12px;font-weight:700;color:#333;margin-bottom:6px">${y}年${parseInt(m)}月</div>
+          <div style="font-size:14px;font-weight:800;color:#2d6a4f;margin-bottom:4px"><span style="font-size:11px;font-weight:400;color:#666">物件名　</span>${esc(pm.name||code)}</div>
+          ${pm.address?`<div style="font-size:12px;font-weight:700;margin-bottom:3px"><span style="font-size:11px;font-weight:400;color:#666">住所　</span>${esc(pm.address)}</div>`:''}
+          ${pm.group_name?`<div style="font-size:12px;font-weight:700;margin-bottom:3px"><span style="font-size:11px;font-weight:400;color:#666">管理者　</span>${esc(pm.group_name)}</div>`:''}
         </div>
-        <div style="font-size:13px;color:var(--muted);margin-bottom:12px">${prop.name}　${y}年${m}月</div>
         ${matHtml}
-        ${recHTML}
-        <button class="btn-download" onclick="printReport('${esc(prop.name)}','${y}','${m}')">📄 PDFとして印刷・保存</button>
+
+        ${reportNotes?`<div style="margin-top:8px"><div style="font-size:11px;font-weight:700;color:#2d6a4f;margin-bottom:4px">報告事項</div><div style="font-size:11px;white-space:pre-wrap;padding:6px 8px;border:1px solid #ddd;border-radius:4px;min-height:10em;line-height:1.8">${esc(reportNotes)}</div></div>`:''}
       </div>`;
+    }
+
+    document.getElementById('printArea').innerHTML = `
+      <div style="font-family:'Hiragino Sans','Yu Gothic',sans-serif;font-size:11px">
+        <div class="report-company-info">
+          <div style="font-size:15px;font-weight:700">有限会社ティワイエス企画</div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end">
+            <div>〒736-0089</div>
+            <div>広島市安芸区畑賀町4080-2</div>
+          </div>
+          <div>TEL：082-827-1121</div>
+        </div>
+        ${html}
+      </div>`;
+    window.print();
+    document.getElementById('printArea').innerHTML = '';
+  }
+
+  function renderPreview(prop, month, records) {
+    renderPreviewMulti([prop], month, records.filter?records:_records);
   }
 
   function printReport(propName, y, m) {
@@ -470,7 +696,6 @@
       </div>
       ${recHTML}
       <div class="print-footer">
-        清掃記録システム　出力日：${new Date().toLocaleDateString('ja-JP')}
       </div>`;
 
     window.print();
@@ -520,14 +745,16 @@
     el.innerHTML = '';
   }
 
-  function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
   // 初期化
-  const _ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  document.getElementById('reportMonth').value = _ym;
-  document.getElementById('listMonth').value = _ym;
-  initColCheckboxes();
-  loadCourses();
+  window.addEventListener('DOMContentLoaded', () => {
+    const now = new Date();
+    const _ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    document.getElementById('reportMonth').value = _ym;
+    document.getElementById('listMonth').value = _ym;
+    initColCheckboxes();
+    loadCourses();
+  });
 </script>
 
 <footer style="text-align:center;padding:20px 16px;font-size:11px;color:var(--muted,#6b7c6e);border-top:1px solid var(--border,#c5d9c7);margin-top:20px">
