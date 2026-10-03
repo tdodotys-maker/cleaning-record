@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>給与明細</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --green:#2d6a4f; --green-light:#52b788; --green-pale:#d8f3dc;
+    --bg:#f8faf8; --text:#1b2e1e; --muted:#6b7c6e;
+    --border:#c5d9c7; --white:#ffffff; --red:#c0392b; --blue:#2980b9;
+  }
+  body { font-family:-apple-system,'Hiragino Sans','Yu Gothic',sans-serif; background:var(--bg); color:var(--text); font-size:15px; }
+
+  /* ログイン画面 */
+  .login-wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+  .login-card { background:var(--white); border-radius:16px; padding:32px 24px; width:100%; max-width:360px; box-shadow:0 4px 16px rgba(0,0,0,.1); }
+  .login-icon { font-size:48px; text-align:center; margin-bottom:12px; }
+  .login-title { font-size:20px; font-weight:800; color:var(--green); text-align:center; margin-bottom:6px; }
+  .login-sub { font-size:12px; color:var(--muted); text-align:center; margin-bottom:24px; }
+  .login-field { margin-bottom:14px; }
+  .login-field label { font-size:12px; font-weight:700; color:var(--muted); display:block; margin-bottom:5px; }
+  .login-field input { width:100%; padding:12px 14px; border:1.5px solid var(--border); border-radius:10px; font-size:15px; font-family:inherit; }
+  .login-field input:focus { outline:none; border-color:var(--green-light); }
+  .btn-login { width:100%; padding:14px; background:var(--green); color:white; border:none; border-radius:10px; font-size:16px; font-weight:700; cursor:pointer; margin-top:8px; }
+  .btn-login:active { opacity:.85; }
+  .login-error { color:var(--red); font-size:12px; text-align:center; margin-top:10px; min-height:18px; }
+
+  /* メイン画面 */
+  header { background:var(--green); color:white; padding:14px 16px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; box-shadow:0 2px 8px rgba(0,0,0,.15); }
+  header h1 { font-size:16px; font-weight:700; }
+  .btn-logout { padding:6px 14px; background:rgba(255,255,255,.2); border:1px solid rgba(255,255,255,.4); border-radius:8px; color:white; font-size:12px; cursor:pointer; }
+
+  .container { padding:16px; max-width:600px; margin:0 auto; }
+  .month-nav { display:flex; align-items:center; justify-content:space-between; background:var(--white); border-radius:12px; padding:10px 14px; margin-bottom:14px; box-shadow:0 1px 4px rgba(0,0,0,.07); }
+  .month-nav button { background:none; border:1.5px solid var(--border); border-radius:8px; padding:6px 14px; font-size:14px; cursor:pointer; color:var(--text); }
+  .month-label { font-size:16px; font-weight:700; color:var(--green); }
+
+  .card { background:var(--white); border-radius:12px; padding:16px; margin-bottom:14px; box-shadow:0 1px 4px rgba(0,0,0,.07); }
+  .card h2 { font-size:14px; font-weight:700; color:var(--green); margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+
+  /* 勤怠テーブル */
+  .att-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .att-table th { background:var(--green); color:white; padding:7px 6px; text-align:center; }
+  .att-table td { padding:6px; border-bottom:1px solid #f0f4f0; text-align:center; }
+  .att-table .sun { color:var(--red); }
+  .att-table .sat { color:var(--blue); }
+
+  /* 給与サマリー */
+  .summary-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #f0f4f0; font-size:14px; }
+  .summary-row:last-child { border-bottom:none; }
+  .summary-row.total { font-size:18px; font-weight:800; color:var(--green); padding-top:14px; }
+  .summary-row label { color:var(--muted); font-size:13px; }
+  .summary-row .val { font-weight:700; }
+
+  .empty { text-align:center; padding:30px; color:var(--muted); font-size:13px; }
+  .locked-badge { display:inline-block; background:#fde8e8; color:var(--red); font-size:11px; font-weight:700; padding:2px 8px; border-radius:6px; margin-left:8px; }
+
+  /* 印刷 */
+  #printArea { display:none; }
+  @media print {
+    body > *:not(#printArea) { display:none !important; }
+    #printArea { display:block !important; }
+    #printArea .locked-badge { display:none !important; }
+    #printArea { font-size:11px; }
+    #printArea .att-table { font-size:10px; }
+    #printArea .summary-row { font-size:12px; padding:6px 0; }
+    #printArea .summary-row.total { font-size:14px; }
+    @page { margin:10mm; size:A4 portrait; }
+    html, body { height:100%; }
+    #printArea > div { height:100%; }
+  }
+
+  footer { text-align:center; padding:20px; font-size:11px; color:var(--muted); border-top:1px solid var(--border); margin-top:20px; }
+</style>
+</head>
+<body>
+
+<!-- ログイン画面 -->
+<div id="loginArea" class="login-wrap">
+  <div class="login-card">
+    <div class="login-icon">💰</div>
+    <div class="login-title">給与明細</div>
+    <div class="login-sub">ユーザー名とパスワードを入力してください</div>
+    <div class="login-field">
+      <label>ユーザー名</label>
+      <input type="text" id="username" placeholder="例：yamada" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <label>パスワード</label>
+      <input type="password" id="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn-login" onclick="doLogin()">ログイン</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- メイン画面 -->
+<div id="mainArea" style="display:none">
+  <header>
+    <h1>💰 給与明細</h1>
+    <button class="btn-logout" onclick="doLogout()">ログアウト</button>
+  </header>
+
+  <div class="container">
+    <div class="month-nav">
+      <button onclick="prevMonth()">◀</button>
+      <div class="month-label" id="monthLabel"></div>
+      <button onclick="nextMonth()">▶</button>
+    </div>
+    <div id="contentArea"></div>
+  </div>
+
+  <footer>© 2026 TYS Co., Ltd. All rights reserved.</footer>
+</div>
+
+<div id="printArea"></div>
+
+<script>
+  const SUPABASE_URL = 'https://kcgycrzqmjdfxctmllaf.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_gIG_84rtMPMZCAsnStcj4w_yKYdJWCm';
+  const SB_H = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
+  const DAYS = ['日','月','火','水','木','金','土'];
+
+  let currentStaff = null;
+  let curYear = new Date().getFullYear();
+  let curMonth = new Date().getMonth() + 1;
+
+  function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  async function sha256(str) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  async function doLogin() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const errEl = document.getElementById('loginError');
+    errEl.textContent = '';
+    if (!username || !password) { errEl.textContent = 'ユーザー名とパスワードを入力してください'; return; }
+
+    const hash = await sha256(password);
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/staff_accounts?username=eq.${encodeURIComponent(username)}&password_hash=eq.${hash}`, { headers: SB_H });
+    const rows = await res.json();
+    if (!rows.length) { errEl.textContent = 'ユーザー名またはパスワードが正しくありません'; return; }
+
+    currentStaff = rows[0].staff_name;
+    sessionStorage.setItem('payslip_staff', currentStaff);
+    showMain();
+  }
+
+  function doLogout() {
+    sessionStorage.removeItem('payslip_staff');
+    currentStaff = null;
+    document.getElementById('loginArea').style.display = 'flex';
+    document.getElementById('mainArea').style.display = 'none';
+    document.getElementById('username').value = '';
+    document.getElementById('password').value = '';
+  }
+
+  function showMain() {
+    document.getElementById('loginArea').style.display = 'none';
+    document.getElementById('mainArea').style.display = 'block';
+    updateLabel();
+    loadPayslip();
+  }
+
+  function updateLabel() {
+    document.getElementById('monthLabel').textContent = `${curYear}年${curMonth}月`;
+  }
+
+  function prevMonth() { curMonth--; if (curMonth < 1) { curMonth = 12; curYear--; } updateLabel(); loadPayslip(); }
+  function nextMonth() { curMonth++; if (curMonth > 12) { curMonth = 1; curYear++; } updateLabel(); loadPayslip(); }
+
+  async function loadPayslip() {
+    const el = document.getElementById('contentArea');
+    el.innerHTML = '<div class="empty">読み込み中…</div>';
+    const month = `${curYear}-${String(curMonth).padStart(2,'0')}`;
+    const lastD = new Date(curYear, curMonth, 0).getDate();
+    const from = `${month}-01`, to = `${month}-${String(lastD).padStart(2,'0')}`;
+
+    const [salaryRows, attendRows] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/salary_records?staff_name=eq.${encodeURIComponent(currentStaff)}&salary_month=eq.${month}`, { headers: SB_H }).then(r=>r.json()),
+      fetch(`${SUPABASE_URL}/rest/v1/attendance?staff_name=eq.${encodeURIComponent(currentStaff)}&work_date=gte.${from}&work_date=lte.${to}&order=work_date.asc`, { headers: SB_H }).then(r=>r.json())
+    ]);
+
+    if (!salaryRows.length) {
+      el.innerHTML = `<div class="card"><div class="empty">この月の給与データはありません</div></div>`;
+      return;
+    }
+
+    const sal = salaryRows[0];
+    const totalH = Math.floor(sal.total_minutes/60);
+    const totalM = sal.total_minutes%60;
+
+    // 勤怠テーブル
+    let attHtml = `<table class="att-table"><thead><tr>
+      <th>日付</th><th>曜日</th><th>出勤</th><th>退勤</th><th>運転</th><th>実働</th>
+    </tr></thead><tbody>`;
+
+    attendRows.forEach(r => {
+      const [ry,rm,rd] = r.work_date.split('-').map(Number);
+      const dow = new Date(ry,rm-1,rd).getDay();
+      const dowCls = dow===0?'sun':dow===6?'sat':'';
+      let inT='', outT='', workT='';
+      if (r.clock_in) inT = new Date(r.clock_in).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Tokyo'});
+      if (r.clock_out) outT = new Date(r.clock_out).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Tokyo'});
+      if (r.clock_in && r.clock_out) {
+        const raw = Math.round((new Date(r.clock_out)-new Date(r.clock_in))/60000);
+        const diff = Math.ceil(raw/5)*5;
+        workT = `${Math.floor(diff/60)}:${String(diff%60).padStart(2,'0')}`;
+      }
+      attHtml += `<tr>
+        <td class="${dowCls}">${rd}</td>
+        <td class="${dowCls}">${DAYS[dow]}</td>
+        <td>${inT}</td><td>${outT}</td>
+        <td>${r.driving?'✓':''}</td>
+        <td>${workT}</td>
+      </tr>`;
+    });
+    attHtml += '</tbody></table>';
+
+    el.innerHTML = `
+      <div class="card">
+        <h2>${curYear}年${curMonth}月　勤怠記録${sal.locked?'<span class="locked-badge">🔒 確定済み</span>':''}</h2>
+        ${attHtml}
+      </div>
+      <div class="card">
+        <h2>給与明細</h2>
+        <div class="summary-row"><label>合計時間</label><span class="val">${totalH}時間${totalM}分</span></div>
+        <div class="summary-row"><label>時給</label><span class="val">${sal.hourly_wage.toLocaleString()}円</span></div>
+        <div class="summary-row"><label>基本給</label><span class="val">${sal.base_pay.toLocaleString()}円</span></div>
+        <div class="summary-row"><label>運転手当（${sal.driving_count}回 × ${sal.driving_wage.toLocaleString()}円）</label><span class="val">${sal.driving_total.toLocaleString()}円</span></div>
+        <div class="summary-row"><label>諸手当</label><span class="val">${sal.allowance.toLocaleString()}円</span></div>
+        <div class="summary-row total"><label>支給額</label><span class="val">${sal.total_pay.toLocaleString()}円</span></div>
+      </div>
+      <button onclick="printPayslip()" style="width:100%;padding:13px;background:var(--green);color:white;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:14px">📄 印刷・PDF保存</button>`;
+  }
+
+  function printPayslip() {
+    const content = document.getElementById('contentArea').innerHTML;
+    const el = document.getElementById('printArea');
+    el.innerHTML = `<div style="font-family:'Hiragino Sans','Yu Gothic',sans-serif;padding:5mm">
+      <h1 style="font-size:18px;text-align:center;margin-bottom:4px;color:#2d6a4f">給与明細書</h1>
+      <p style="text-align:center;font-size:13px;margin-bottom:16px">${curYear}年${curMonth}月</p>
+      <p style="font-size:15px;font-weight:700;margin-bottom:16px">${esc(currentStaff)} 様</p>
+      ${content}
+    </div>`;
+    el.querySelectorAll('button').forEach(b=>b.style.display='none');
+    window.print();
+    el.innerHTML = '';
+  }
+
+  // セッション復元
+  const saved = sessionStorage.getItem('payslip_staff');
+  if (saved) { currentStaff = saved; showMain(); }
+</script>
+</body>
+</html>
