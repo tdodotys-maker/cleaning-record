@@ -183,8 +183,15 @@
       <button class="btn-wage" onclick="loadWage()">表示</button>
     </div>
     <div id="wageArea"></div>
-    <div id="wagePrintBtn" style="display:none;margin-top:10px">
-      <button class="btn-wage btn-print" onclick="printWage()" style="width:100%">📄 印刷・PDF保存</button>
+    <div id="wagePrintBtn" style="display:none;margin-top:10px;display:none">
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <button class="btn-wage" onclick="saveSalary()" id="btnSaveSalary" style="flex:1;background:var(--green)">💾 給与を確定保存</button>
+        <button class="btn-wage btn-print" onclick="printWage()" style="flex:1">📄 印刷・PDF保存</button>
+      </div>
+      <div id="salaryLockBanner" style="display:none;background:#fde8e8;border-radius:8px;padding:10px 14px;font-size:12px;color:var(--red);font-weight:700;justify-content:space-between;align-items:center">
+        <span>🔒 確定済み（編集不可）</span>
+        <button onclick="unlockSalary()" style="padding:4px 12px;background:white;border:1.5px solid var(--red);border-radius:6px;font-size:11px;font-weight:700;color:var(--red);cursor:pointer">🔓 ロック解除</button>
+      </div>
     </div>
   </div>
 </div>
@@ -434,7 +441,27 @@
     // totalMinをグローバルに保存
     window._wageMin = totalMin;
     window._drivingCount = drivingCount;
+    window._wageStaff = staff;
+    window._wageMonth = month;
     document.getElementById('wagePrintBtn').style.display='block';
+
+    // 保存済みデータを確認
+    const saved = await sbGet('salary_records',`?staff_name=eq.${encodeURIComponent(staff)}&salary_month=eq.${month}`);
+    if(saved.length){
+      window._salaryId = saved[0].id;
+      const locked = saved[0].locked;
+      setWageLock(locked);
+      if(locked){
+        // 保存済み値を表示
+        document.getElementById('hourlyWageInput').value = saved[0].hourly_wage;
+        document.getElementById('drivingWageInput').value = saved[0].driving_wage;
+        document.getElementById('allowanceInput').value = saved[0].allowance;
+        calcWage();
+      }
+    } else {
+      window._salaryId = null;
+      setWageLock(false);
+    }
   }
 
   function calcWage(){
@@ -448,6 +475,62 @@
     document.getElementById('payBase').textContent = base.toLocaleString();
     document.getElementById('drivingTotal').textContent = drivingTotal.toLocaleString();
     document.getElementById('payTotal').textContent = (base+drivingTotal+allowance).toLocaleString();
+  }
+
+  function setWageLock(locked){
+    const inputs = ['hourlyWageInput','drivingWageInput','allowanceInput'];
+    inputs.forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.disabled=locked;
+    });
+    document.querySelectorAll('.btn-save-wage').forEach(b=>b.disabled=locked);
+    const saveBtn=document.getElementById('btnSaveSalary');
+    const lockBanner=document.getElementById('salaryLockBanner');
+    if(saveBtn) saveBtn.style.display=locked?'none':'block';
+    if(lockBanner) { lockBanner.style.display=locked?'flex':'none'; }
+  }
+
+  async function unlockSalary(){
+    if(!confirm('ロックを解除して編集可能にしますか？')) return;
+    if(window._salaryId){
+      await fetch(`${SUPABASE_URL}/rest/v1/salary_records?id=eq.${window._salaryId}`,{
+        method:'PATCH',headers:{...SB_H,'Prefer':'return=minimal'},body:JSON.stringify({locked:false})
+      });
+    }
+    setWageLock(false);
+  }
+
+  async function saveSalary(){
+    if(!confirm('給与を確定保存しますか？\n保存後はロックされ編集できなくなります。')) return;
+    const staff=window._wageStaff;
+    const month=window._wageMonth;
+    const totalMin=window._wageMin||0;
+    const drivingCount=window._drivingCount||0;
+    const hourly=parseInt(document.getElementById('hourlyWageInput').value)||0;
+    const drivingWage=parseInt(document.getElementById('drivingWageInput').value)||0;
+    const allowance=parseInt(document.getElementById('allowanceInput').value)||0;
+    const base=Math.floor(totalMin/60*hourly+(totalMin%60)/60*hourly);
+    const drivingTotal=drivingCount*drivingWage;
+    const totalPay=base+drivingTotal+allowance;
+    const data={
+      staff_name:staff, salary_month:month,
+      total_minutes:totalMin, hourly_wage:hourly, base_pay:base,
+      driving_count:drivingCount, driving_wage:drivingWage, driving_total:drivingTotal,
+      allowance:allowance, total_pay:totalPay, locked:true
+    };
+    if(window._salaryId){
+      await fetch(`${SUPABASE_URL}/rest/v1/salary_records?id=eq.${window._salaryId}`,{
+        method:'PATCH',headers:{...SB_H,'Prefer':'return=minimal'},body:JSON.stringify(data)
+      });
+    } else {
+      const res=await fetch(`${SUPABASE_URL}/rest/v1/salary_records`,{
+        method:'POST',headers:{...SB_H,'Prefer':'return=representation'},body:JSON.stringify(data)
+      });
+      const rows=await res.json();
+      if(rows.length) window._salaryId=rows[0].id;
+    }
+    setWageLock(true);
+    alert('給与を確定保存しました');
   }
 
   function printWage(){
