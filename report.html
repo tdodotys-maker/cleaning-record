@@ -66,7 +66,7 @@
   .report-company-info { display:none; position:fixed; bottom:10mm; right:10mm; font-size:9px; line-height:1.6; color:#333; text-align:right; }
   @media print {
     .report-page-title { display:block; text-align:center; font-size:20px; font-weight:800; color:#2d6a4f; margin-bottom:14px; padding-bottom:10px; border-bottom:2px solid #2d6a4f; }
-    .report-company-info { display:block; position:fixed; bottom:8mm; right:8mm; font-size:12px; line-height:1.7; color:#555; text-align:right; }
+    .report-company-info { display:block; position:fixed; bottom:8mm; right:8mm; font-size:12px; line-height:1.7; color:#000; text-align:right; }
   }
 
   @media print {
@@ -79,7 +79,7 @@
     #listPrintArea th, #listPrintArea td { position:static !important; }
     #listPrintArea .m-date-cell { position:static !important; }
     #listPrintArea .m-table th { background:#2d6a4f !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-    @page { margin:15mm 10mm 30mm 10mm; size:A4 portrait; }
+    @page { margin:15mm 10mm 30mm 10mm; }
     #wagePrintArea .btn-download, #printArea .btn-download { display:none !important; }
     .report-page-title { display:block !important; }
     .report-company-info { display:block !important; }
@@ -198,7 +198,7 @@
   const SUPABASE_KEY = 'sb_publishable_gIG_84rtMPMZCAsnStcj4w_yKYdJWCm';
   const SB_H = { 'apikey':SUPABASE_KEY, 'Authorization':'Bearer '+SUPABASE_KEY };
 
-  let _courses = [], _records = [];
+  let _courses = [], _records = [], _targetProps = [];
 
   function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
@@ -232,7 +232,9 @@
         ${esc(col)}
       </label>`
     ).join('');
-    document.querySelectorAll('.report-col-check').forEach(cb => { cb.checked = true; });
+    document.querySelectorAll('.report-col-check').forEach(cb => {
+      cb.checked = cb.value !== '照明';
+    });
   }
 
   function checkAll(val) {
@@ -475,6 +477,7 @@
         `?cleaning_date=gte.${from}&cleaning_date=lte.${to}&deleted=is.false&order=property_name.asc,cleaning_date.asc`);
 
       _records = allRecords;
+      _targetProps = targetProps;
       await renderPreviewMulti(targetProps, month, allRecords);
     } catch(e) {
       alert('データの取得に失敗しました');
@@ -567,6 +570,10 @@
           <textarea id="rn-${esc(prop.code)}" style="width:100%;min-height:60px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;padding:8px" placeholder="報告事項を入力">${esc(rnote.notes||(notesForAdmin?'':'異常ありませんでした。'))}</textarea>
           <button onclick="saveReportNote('${esc(prop.code)}','${month}')" style="margin-top:4px;padding:5px 14px;background:var(--green-pale);border:1.5px solid var(--green-light);border-radius:6px;font-size:11px;font-weight:700;color:var(--green);cursor:pointer">💾 保存</button>
         </div>
+        <div style="margin-top:10px">
+          <div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:6px">📅 次月清掃日</div>
+          <input type="text" id="next-month-dates-${esc(prop.code)}" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit" value="読み込み中…">
+        </div>
       </div>`;
     }
 
@@ -579,21 +586,69 @@
       ${html}
       <button class="btn-download" onclick="printReportMulti('${y}','${m}')">📄 PDFとして印刷・保存</button>
     </div>`;
+
+    // 次月清掃日をシフトから取得
+    const nm = parseInt(m)===12 ? `${parseInt(y)+1}-01` : `${y}-${String(parseInt(m)+1).padStart(2,'0')}`;
+    const nmLastDay = new Date(parseInt(nm.split('-')[0]), parseInt(nm.split('-')[1]), 0).getDate();
+    const [nmShifts, cpRows] = await Promise.all([
+      sbGet('shifts', `?work_date=gte.${nm}-01&work_date=lte.${nm}-${String(nmLastDay).padStart(2,'0')}&course_code=neq.__work__&order=work_date.asc`),
+      sbGet('course_properties', '')
+    ]);
+    const propCourseMap = {};
+    cpRows.forEach(cp => {
+      if (!propCourseMap[cp.property_code]) propCourseMap[cp.property_code] = [];
+      propCourseMap[cp.property_code].push(cp.course_code);
+    });
+    for (const prop of targetProps) {
+      const el = document.getElementById('next-month-dates-' + prop.code);
+      if (!el) continue;
+      const courseCodes = propCourseMap[prop.code] || [];
+      const matchDates = nmShifts
+        .filter(s => courseCodes.includes(s.course_code))
+        .map(s => {
+          const d = parseInt(s.work_date.split('-')[2]);
+          return `${d}日（${DAYS[new Date(s.work_date).getDay()]}）`;
+        });
+      el.value = matchDates.length ? matchDates.join('、') : '';
+    }
   }
 
   async function printReportMulti(y, m) {
+    try {
     const month = `${y}-${m}`;
     const SPECIAL_COLS = new Set(['クモの巣多し','落ち葉多し','階段拭き','照明（球切れ等）','砂取り']);
     const selectedCols = getSelectedReportCols().filter(col=>!SPECIAL_COLS.has(col));
     const group = document.getElementById('reportGroup')?.value || '';
     const allProps = await sbGet('properties','');
+    // 次月清掃日取得
+    const nm = parseInt(m)===12 ? `${parseInt(y)+1}-01` : `${y}-${String(parseInt(m)+1).padStart(2,'0')}`;
+    const nmLastDay = new Date(parseInt(nm.split('-')[0]), parseInt(nm.split('-')[1]), 0).getDate();
+    const [nmShifts, cpRowsPrint] = await Promise.all([
+      sbGet('shifts', `?work_date=gte.${nm}-01&work_date=lte.${nm}-${String(nmLastDay).padStart(2,'0')}&course_code=neq.__work__&order=work_date.asc`),
+      sbGet('course_properties', '')
+    ]);
+    const propCourseMapPrint = {};
+    cpRowsPrint.forEach(cp => {
+      if (!propCourseMapPrint[cp.property_code]) propCourseMapPrint[cp.property_code] = [];
+      propCourseMapPrint[cp.property_code].push(cp.course_code);
+    });
+    const nextDatesMap = {};
+    [...new Set(_records.map(r=>r.property_code))].forEach(code => {
+      const ccs = propCourseMapPrint[code] || [];
+      const ds = nmShifts.filter(s=>ccs.includes(s.course_code)).map(s => {
+        const d = parseInt(s.work_date.split('-')[2]);
+        return `${d}日（${DAYS[new Date(s.work_date).getDay()]}）`;
+      });
+      nextDatesMap[code] = ds.join('、');
+    });
     const propMasterMap = {};
     allProps.forEach(p=>{ propMasterMap[p.code]=p; });
     const rnotesAll = await sbGet('report_notes',`?report_month=eq.${month}`);
     const rnotesMap = {};
     rnotesAll.forEach(n=>{ rnotesMap[n.property_code]={notes:n.notes}; });
 
-    const propCodes = [...new Set(_records.map(r=>r.property_code))];
+    const targetCodes = new Set(_targetProps.map(p=>p.code));
+    const propCodes = [...new Set(_records.map(r=>r.property_code))].filter(c=>targetCodes.size===0||targetCodes.has(c));
     let html = '';
     let isFirst = true;
 
@@ -614,40 +669,44 @@
         ...(r.special_items?r.special_items.split('／').filter(Boolean):[])
       ]));
 
-      let matHtml = `<table style="width:100%;border-collapse:collapse;font-size:11px">
+      let matHtml = `<table style="width:100%;border-collapse:collapse;font-size:10px">
         <thead><tr>
-          <th style="text-align:left;padding:5px 6px;background:#2d6a4f;color:white;min-width:100px">清掃内容</th>
-          ${dates.map(({rd,dow,r})=>`<th style="text-align:center;padding:5px 3px;background:#2d6a4f;color:white;min-width:40px">${rd}日<br>（${dow}）<br>${esc(r.weather||'')}</th>`).join('')}
+          <th style="text-align:left;padding:5px 6px;background:#ffffff;color:#000;border:1px solid #ddd;min-width:80px;font-size:12px;font-weight:400">清掃内容</th>
+          ${dates.map(({rd,dow,r})=>`<th style="text-align:center;padding:5px 3px;background:#ffffff;color:#000;border:1px solid #ddd;min-width:40px;font-weight:400">${rd}日（${dow}）<br>${esc(r.weather||'')}</th>`).join('')}
         </tr></thead><tbody>`;
 
       selectedCols.forEach((col,ci)=>{
         matHtml+=`<tr style="background:${ci%2===0?'#f9fcf9':'white'}">
-          <td style="padding:5px 7px;border:1px solid #ddd">${esc(col)}</td>
-          ${checkSets.map(cs=>`<td style="text-align:center;padding:6px;border:1px solid #ddd;font-size:12px;min-height:24px">${cs.has(col)?'✓':'　'}</td>`).join('')}
+          <td style="padding:4px 6px;border:1px solid #ddd;font-size:11px;line-height:1.6">${esc(col)}</td>
+          ${checkSets.map(cs=>`<td style="text-align:center;padding:4px;border:1px solid #ddd;font-size:11px;line-height:1.6">${cs.has(col)?'✓':'　'}</td>`).join('')}
         </tr>`;
       });
       matHtml += '</tbody></table>';
 
+      // 特記事項をまとめる
+      const notesForPrint = dates.filter(({r})=>r.notes&&r.notes.trim()).map(({rd,dow,r})=>`${rd}日（${dow}）：${r.notes}`).join('\n');
+
       // 報告事項はtextareaの現在値を使用
       const taEl = document.getElementById('rn-'+code);
       const reportNotes = taEl ? taEl.value : (rnote.notes||(notesForPrint?'':'異常ありませんでした。'));
-
-      // 特記事項をまとめる
-      const notesForPrint = dates.filter(({r})=>r.notes&&r.notes.trim()).map(({rd,dow,r})=>`${rd}日（${dow}）：${r.notes}`).join('\n');
 
       const pageBreak = isFirst ? '' : 'page-break-before:always';
       isFirst = false;
       html += `<div style="margin-bottom:24px;${pageBreak}">
         <div class="report-page-title">清掃作業報告書</div>
         <div style="margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #2d6a4f">
-          <div style="font-size:12px;font-weight:700;color:#333;margin-bottom:6px">${y}年${parseInt(m)}月</div>
-          <div style="font-size:14px;font-weight:800;color:#2d6a4f;margin-bottom:4px"><span style="font-size:11px;font-weight:400;color:#666">物件名　</span>${esc(pm.name||code)}</div>
-          ${pm.address?`<div style="font-size:12px;font-weight:700;margin-bottom:3px"><span style="font-size:11px;font-weight:400;color:#666">住所　</span>${esc(pm.address)}</div>`:''}
-          ${pm.group_name?`<div style="font-size:12px;font-weight:700;margin-bottom:3px"><span style="font-size:11px;font-weight:400;color:#666">管理者　</span>${esc(pm.group_name)}</div>`:''}
+          <div style="font-size:12px;font-weight:700;color:#000;margin-bottom:6px">${y}年${parseInt(m)}月</div>
+          <div style="font-size:14px;font-weight:800;color:#2d6a4f;margin-bottom:4px"><span style="font-size:11px;font-weight:400;color:#000">物件名　</span>${esc(pm.name||code)}</div>
+          ${pm.address?`<div style="font-size:12px;font-weight:700;margin-bottom:3px"><span style="font-size:11px;font-weight:400;color:#000">住所　</span>${esc(pm.address)}</div>`:''}
+          ${pm.group_name?`<div style="font-size:12px;font-weight:700;margin-bottom:3px"><span style="font-size:11px;font-weight:400;color:#000">管理者　</span>${esc(pm.group_name)}</div>`:''}
         </div>
         ${matHtml}
 
-        ${reportNotes?`<div style="margin-top:8px"><div style="font-size:11px;font-weight:700;color:#2d6a4f;margin-bottom:4px">報告事項</div><div style="font-size:11px;white-space:pre-wrap;padding:6px 8px;border:1px solid #ddd;border-radius:4px;min-height:10em;line-height:1.8">${esc(reportNotes)}</div></div>`:''}
+        ${reportNotes?`<div style="margin-top:8px"><div style="font-size:11px;font-weight:700;color:#2d6a4f;margin-bottom:4px">報告事項</div><div style="font-size:11px;white-space:pre-wrap;padding:5px 7px;border:1px solid #ddd;border-radius:4px;min-height:10em;line-height:1.8">${esc(reportNotes)}</div></div>`:''}
+        <div style="margin-top:8px">
+          <div style="font-size:11px;font-weight:700;color:#2d6a4f;margin-bottom:4px">次月清掃日</div>
+          <div style="font-size:11px;padding:4px 6px;border:1px solid #ddd;border-radius:4px;min-height:2em;line-height:1.8">${(()=>{ const el=document.getElementById('next-month-dates-'+code); return esc(el?el.value:(nextDatesMap[code]||'')); })()}</div>
+        </div>
       </div>`;
     }
 
@@ -665,6 +724,7 @@
       </div>`;
     window.print();
     document.getElementById('printArea').innerHTML = '';
+    } catch(e) { console.error('printReportMulti error:', e); alert('印刷エラー: ' + e.message); }
   }
 
   function renderPreview(prop, month, records) {
