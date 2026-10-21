@@ -406,7 +406,7 @@
     const wage=wageData[staff]||{hourly_wage:0,driving_wage:0};
     const hourlyWage=wage.hourly_wage||0;
     const drivingWageInit=wage.driving_wage||0;
-    const payBase=Math.floor(totalMin/60*hourlyWage + (totalMin%60)/60*hourlyWage);
+    const payBase=Math.floor(totalMin/60*hourlyWage);
     const drivingTotalInit=drivingCount*drivingWageInit;
     document.getElementById('wageArea').innerHTML=`
       ${tableHtml}
@@ -470,7 +470,7 @@
     const hourly = parseInt(document.getElementById('hourlyWageInput').value)||0;
     const allowance = parseInt(document.getElementById('allowanceInput').value)||0;
     const drivingWage = parseInt(document.getElementById('drivingWageInput').value)||0;
-    const base = Math.floor(totalMin/60*hourly + (totalMin%60)/60*hourly);
+    const base = Math.floor(totalMin/60*hourly);
     const drivingTotal = drivingCount * drivingWage;
     document.getElementById('payBase').textContent = base.toLocaleString();
     document.getElementById('drivingTotal').textContent = drivingTotal.toLocaleString();
@@ -509,7 +509,7 @@
     const hourly=parseInt(document.getElementById('hourlyWageInput').value)||0;
     const drivingWage=parseInt(document.getElementById('drivingWageInput').value)||0;
     const allowance=parseInt(document.getElementById('allowanceInput').value)||0;
-    const base=Math.floor(totalMin/60*hourly+(totalMin%60)/60*hourly);
+    const base=Math.floor(totalMin/60*hourly);
     const drivingTotal=drivingCount*drivingWage;
     const totalPay=base+drivingTotal+allowance;
     const data={

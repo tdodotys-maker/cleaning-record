@@ -88,6 +88,15 @@
   .modal-edit .check-item input { width:16px; height:16px; accent-color:var(--green); flex-shrink:0; }
   .modal-edit .check-item:has(input:checked) { background:var(--green-pale); border-color:var(--green-light); }
   .modal-btn-row { display:flex; gap:8px; margin-top:16px; }
+  /* 写真アップロード */
+  .edit-photo-btns { display:flex; gap:8px; margin-top:6px; }
+  .edit-photo-btn { flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:10px; border:2px dashed var(--border); border-radius:10px; background:var(--bg); color:var(--muted); font-size:13px; cursor:pointer; transition:all .15s; }
+  .edit-photo-btn:active { background:var(--green-pale); border-color:var(--green-light); }
+  .edit-photo-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:8px; }
+  .edit-photo-thumb { position:relative; aspect-ratio:1; border-radius:8px; overflow:hidden; background:#f0f0f0; }
+  .edit-photo-thumb img { width:100%; height:100%; object-fit:cover; }
+  .edit-photo-thumb .del-btn { position:absolute; top:3px; right:3px; background:rgba(0,0,0,.55); color:white; border:none; border-radius:50%; width:20px; height:20px; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; }
+  .edit-photo-progress { font-size:12px; color:var(--muted); text-align:center; margin-top:4px; min-height:16px; }
   .btn-update { flex:1; padding:12px; background:var(--green); color:white; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; }
   .btn-update:active { opacity:.8; }
   .btn-delete { padding:12px 16px; background:var(--red-pale,#fde8e8); color:var(--red); border:1.5px solid #f5c6c6; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; }
@@ -310,12 +319,100 @@
         <div class="modal-val"><textarea id="edit_notes">${esc(r.notes||'')}</textarea></div></div>
       <div class="modal-row"><div class="modal-label">🔖 社内共有事項</div>
         <div class="modal-val"><textarea id="edit_next_check" style="border-color:#a9cce3">${esc(r.next_check||'')}</textarea></div></div>
+      <div class="modal-row"><div class="modal-label">写真</div>
+        <div class="modal-val">
+          <div class="edit-photo-btns">
+            <label class="edit-photo-btn" for="editCameraInput">📸 カメラ</label>
+            <label class="edit-photo-btn" style="background:var(--green-pale);color:var(--green);border:1.5px solid var(--green-light)" for="editPhotoInput">🖼 ライブラリ</label>
+          </div>
+          <input type="file" id="editCameraInput" accept="image/*" capture="environment" style="display:none" onchange="onEditPhotoSelect(event)">
+          <input type="file" id="editPhotoInput" accept="image/*" multiple style="display:none" onchange="onEditPhotoSelect(event)">
+          <div class="edit-photo-grid" id="editPhotoGrid"></div>
+          <div class="edit-photo-progress" id="editPhotoProgress"></div>
+        </div></div>
       <div class="modal-btn-row">
         <button class="btn-update" onclick="updateRecord()">更新する</button>
         <button class="btn-delete" onclick="deleteRecord()">削除</button>
       </div>
     </div>`;
     document.getElementById('modalEdit').innerHTML=html;
+    // 既存写真を初期化
+    _editExistingUrls = [];
+    _editNewPhotos = [];
+    try {
+      if (r.photo_urls) _editExistingUrls = JSON.parse(r.photo_urls);
+    } catch(e) {}
+    renderEditPhotoPreview();
+  }
+
+  // ===== 編集モーダル写真 =====
+  let _editExistingUrls = [];
+  let _editNewPhotos = [];
+
+  function renderEditPhotoPreview() {
+    const grid = document.getElementById('editPhotoGrid');
+    if (!grid) return;
+    let html = '';
+    _editExistingUrls.forEach((url, i) => {
+      html += `<div class="edit-photo-thumb"><img src="${url}" loading="lazy"><button class="del-btn" onclick="removeEditExisting(${i})">✕</button></div>`;
+    });
+    _editNewPhotos.forEach((p, i) => {
+      html += `<div class="edit-photo-thumb"><img src="${p.dataUrl}"><button class="del-btn" onclick="removeEditNew(${i})">✕</button></div>`;
+    });
+    grid.innerHTML = html;
+    const total = _editExistingUrls.length + _editNewPhotos.length;
+    const prog = document.getElementById('editPhotoProgress');
+    if (prog) prog.textContent = total > 0 ? `写真${total}枚` : '';
+  }
+
+  function removeEditExisting(i) { _editExistingUrls.splice(i, 1); renderEditPhotoPreview(); }
+  function removeEditNew(i) { _editNewPhotos.splice(i, 1); renderEditPhotoPreview(); }
+
+  async function onEditPhotoSelect(event) {
+    const files = [...event.target.files];
+    event.target.value = '';
+    for (const file of files) {
+      const dataUrl = await new Promise(res => { const fr = new FileReader(); fr.onload = e => res(e.target.result); fr.readAsDataURL(file); });
+      _editNewPhotos.push({ file, dataUrl });
+    }
+    renderEditPhotoPreview();
+  }
+
+  function compressImageEdit(file, maxWidth=1200, quality=0.75) {
+    return new Promise(resolve => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const scale = Math.min(1, maxWidth / img.width);
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        canvas.toBlob(blob => resolve(blob), 'image/jpeg', quality);
+      };
+      img.src = url;
+    });
+  }
+
+  async function uploadEditPhotos(recordId) {
+    if (!_editNewPhotos.length) return _editExistingUrls;
+    const prog = document.getElementById('editPhotoProgress');
+    const urls = [..._editExistingUrls];
+    for (let i = 0; i < _editNewPhotos.length; i++) {
+      if (prog) prog.textContent = `写真アップロード中… ${i+1}/${_editNewPhotos.length}枚`;
+      const blob = await compressImageEdit(_editNewPhotos[i].file);
+      const path = `${recordId}/${Date.now()}_${i}.jpg`;
+      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/photos/${path}`, {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'image/jpeg' },
+        body: blob
+      });
+      if (res.ok) urls.push(`${SUPABASE_URL}/storage/v1/object/public/photos/${path}`);
+    }
+    if (prog) prog.textContent = `写真${urls.length}枚`;
+    return urls;
   }
 
   function setEditWeather(val, btn) {
@@ -350,15 +447,16 @@
     if (!date||!weather||!start||!end) { alert('実施日・天候・時刻は必須です'); return; }
     const btn = document.querySelector('.btn-update');
     btn.textContent='更新中…'; btn.disabled=true;
+    const photoUrls = await uploadEditPhotos(r.id);
     const res = await fetch(`${SUPABASE_URL}/rest/v1/cleaning_records?id=eq.${r.id}`, {
       method:'PATCH',
       headers:{...SB_H,'Content-Type':'application/json','Prefer':'return=minimal'},
-      body: JSON.stringify({ cleaning_date:date, weather, start_time:start, end_time:end, check_items:checks.join('／'), special_items:specials.join('／'), notes, next_check })
+      body: JSON.stringify({ cleaning_date:date, weather, start_time:start, end_time:end, check_items:checks.join('／'), special_items:specials.join('／'), notes, next_check, photo_urls: JSON.stringify(photoUrls) })
     });
     btn.textContent='更新する'; btn.disabled=false;
     if (res.ok) {
       // ローカルデータも更新
-      allRecords[currentModalIdx] = { ...r, cleaning_date:date, weather, start_time:start, end_time:end, check_items:checks.join('／'), special_items:specials.join('／'), notes };
+      allRecords[currentModalIdx] = { ...r, cleaning_date:date, weather, start_time:start, end_time:end, check_items:checks.join('／'), special_items:specials.join('／'), notes, next_check, photo_urls: JSON.stringify(photoUrls) };
       renderModalView(allRecords[currentModalIdx]);
       document.querySelectorAll('.modal-tab')[0].click();
       applyFilter();
