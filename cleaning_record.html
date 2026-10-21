@@ -100,6 +100,14 @@
   .edit-modal-btns { display:flex; gap:8px; margin-top:16px; }
   .btn-edit-save { flex:1; padding:12px; background:var(--green); color:white; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; }
   .btn-edit-del { padding:12px 16px; background:#fde8e8; color:var(--red); border:1.5px solid #f5c6c6; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; }
+  .em-photo-btns { display:flex; gap:8px; margin-top:6px; }
+  .em-photo-btn { flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:10px; border:2px dashed var(--border); border-radius:10px; background:var(--bg); color:var(--muted); font-size:13px; cursor:pointer; transition:all .15s; }
+  .em-photo-btn:active { background:var(--green-pale); border-color:var(--green-light); }
+  .em-photo-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:8px; }
+  .em-photo-thumb { position:relative; aspect-ratio:1; border-radius:8px; overflow:hidden; background:#f0f0f0; }
+  .em-photo-thumb img { width:100%; height:100%; object-fit:cover; }
+  .em-photo-thumb .del-btn { position:absolute; top:3px; right:3px; background:rgba(0,0,0,.55); color:white; border:none; border-radius:50%; width:20px; height:20px; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; }
+  .em-photo-progress { font-size:12px; color:var(--muted); text-align:center; margin-top:4px; min-height:16px; }
   .monthly-item { cursor:pointer; transition:background .15s; }
   .monthly-item:active { background:var(--green-pale); }
   .edit-badge { font-size:10px; padding:2px 6px; background:var(--green-pale); color:var(--green); border-radius:6px; flex-shrink:0; }
@@ -867,18 +875,85 @@
       </div>
       <div class="field"><label>特記事項</label><textarea id="em_notes">${esc(r.notes||'')}</textarea></div>
       <div class="field"><label>🔖 社内共有事項</label><textarea id="em_next_check" style="border-color:#a9cce3">${esc(r.next_check||'')}</textarea></div>
+      <div class="field"><label>写真</label>
+        <div class="em-photo-btns">
+          <label class="em-photo-btn" for="emCameraInput">📸 カメラ</label>
+          <label class="em-photo-btn" style="background:var(--green-pale);color:var(--green);border:1.5px solid var(--green-light)" for="emPhotoInput">🖼 ライブラリ</label>
+        </div>
+        <input type="file" id="emCameraInput" accept="image/*" capture="environment" style="display:none" onchange="onEmPhotoSelect(event)">
+        <input type="file" id="emPhotoInput" accept="image/*" multiple style="display:none" onchange="onEmPhotoSelect(event)">
+        <div class="em-photo-grid" id="emPhotoGrid"></div>
+        <div class="em-photo-progress" id="emPhotoProgress"></div>
+      </div>
       <div class="edit-modal-btns">
         <button class="btn-edit-save" onclick="saveEditModal()">更新する</button>
         <button class="btn-edit-del" onclick="deleteEditModal()">削除</button>
       </div>`;
     document.getElementById('editModalOverlay').classList.add('show');
     document.body.style.overflow = 'hidden';
+    // 既存写真を初期化
+    _emExistingUrls = [];
+    _emNewPhotos = [];
+    try { if (r.photo_urls) _emExistingUrls = JSON.parse(r.photo_urls); } catch(e) {}
+    renderEmPhotoPreview();
   }
 
   function setEmWeather(val, btn) {
     document.querySelectorAll('#em_weather_group .weather-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('em_weather').value = val;
+  }
+
+  // ===== 過去履歴編集モーダル 写真 =====
+  let _emExistingUrls = [];
+  let _emNewPhotos = [];
+
+  function renderEmPhotoPreview() {
+    const grid = document.getElementById('emPhotoGrid');
+    if (!grid) return;
+    let html = '';
+    _emExistingUrls.forEach((url, i) => {
+      html += `<div class="em-photo-thumb"><img src="${url}" loading="lazy"><button class="del-btn" onclick="removeEmExisting(${i})">✕</button></div>`;
+    });
+    _emNewPhotos.forEach((p, i) => {
+      html += `<div class="em-photo-thumb"><img src="${p.dataUrl}"><button class="del-btn" onclick="removeEmNew(${i})">✕</button></div>`;
+    });
+    grid.innerHTML = html;
+    const total = _emExistingUrls.length + _emNewPhotos.length;
+    const prog = document.getElementById('emPhotoProgress');
+    if (prog) prog.textContent = total > 0 ? `写真${total}枚` : '';
+  }
+
+  function removeEmExisting(i) { _emExistingUrls.splice(i, 1); renderEmPhotoPreview(); }
+  function removeEmNew(i) { _emNewPhotos.splice(i, 1); renderEmPhotoPreview(); }
+
+  async function onEmPhotoSelect(event) {
+    const files = [...event.target.files];
+    event.target.value = '';
+    for (const file of files) {
+      const dataUrl = await new Promise(res => { const fr = new FileReader(); fr.onload = e => res(e.target.result); fr.readAsDataURL(file); });
+      _emNewPhotos.push({ file, dataUrl });
+    }
+    renderEmPhotoPreview();
+  }
+
+  async function uploadEmPhotos(recordId) {
+    if (!_emNewPhotos.length) return _emExistingUrls;
+    const prog = document.getElementById('emPhotoProgress');
+    const urls = [..._emExistingUrls];
+    for (let i = 0; i < _emNewPhotos.length; i++) {
+      if (prog) prog.textContent = `写真アップロード中… ${i+1}/${_emNewPhotos.length}枚`;
+      const blob = await compressImage(_emNewPhotos[i].file);
+      const path = `${recordId}/${Date.now()}_${i}.jpg`;
+      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/photos/${path}`, {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'image/jpeg' },
+        body: blob
+      });
+      if (res.ok) urls.push(`${SUPABASE_URL}/storage/v1/object/public/photos/${path}`);
+    }
+    if (prog) prog.textContent = `写真${urls.length}枚`;
+    return urls;
   }
 
   async function saveEditModal() {
@@ -894,10 +969,11 @@
     if (!date||!weather||!start||!end) { alert('実施日・天候・時刻は必須です'); return; }
     const btn = document.querySelector('.btn-edit-save');
     btn.textContent='更新中…'; btn.disabled=true;
+    const photoUrls = await uploadEmPhotos(r.id);
     const res = await fetch(`${SUPABASE_URL}/rest/v1/cleaning_records?id=eq.${r.id}`, {
       method:'PATCH',
       headers:{...SB_HEADERS,'Content-Type':'application/json','Prefer':'return=minimal'},
-      body: JSON.stringify({ cleaning_date:date, weather, start_time:start, end_time:end, check_items:checks.join('／'), special_items:specials.join('／'), notes, next_check })
+      body: JSON.stringify({ cleaning_date:date, weather, start_time:start, end_time:end, check_items:checks.join('／'), special_items:specials.join('／'), notes, next_check, photo_urls: JSON.stringify(photoUrls) })
     });
     btn.textContent='更新する'; btn.disabled=false;
     if (res.ok) {
