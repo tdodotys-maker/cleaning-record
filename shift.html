@@ -244,18 +244,28 @@
   async function confirmLock(){
     const ym = `${reqYear}-${String(reqMonth).padStart(2,'0')}`;
     if(!confirm(`${reqYear}年${reqMonth}月の休み希望を確定します。\n確定後は変更できなくなります。\nよろしいですか？`)) return;
+    const btn = document.getElementById('btnConfirmLock');
+    btn.textContent = '確定中…'; btn.disabled = true;
+    let ok = false;
     if(_lockData){
-      await fetch(`${SUPABASE_URL}/rest/v1/shift_request_locks?id=eq.${_lockData.id}`,{
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/shift_request_locks?id=eq.${_lockData.id}`,{
         method:'PATCH',headers:{...SB_H,'Prefer':'return=minimal'},
         body:JSON.stringify({locked:true, lock_month:ym})
       });
+      ok = res.ok;
     } else {
-      await fetch(`${SUPABASE_URL}/rest/v1/shift_request_locks`,{
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/shift_request_locks`,{
         method:'POST',headers:{...SB_H,'Prefer':'return=minimal'},
         body:JSON.stringify({staff_name:staffName, lock_month:ym, locked:true})
       });
+      ok = res.ok;
     }
-    loadLockStatus();
+    btn.textContent = '✅ 休み希望を確定する'; btn.disabled = false;
+    if(ok){
+      await loadLockStatus();
+    } else {
+      alert('確定に失敗しました。もう一度お試しください。');
+    }
   }
 
   async function loadReqData(){
