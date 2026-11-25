@@ -333,7 +333,7 @@ function renderShiftTable(){
     const hol=isHol(ds);
     const rowCls=(ds===today?'today-r ':(hol?'row-hol ':dow===0?'row-sun ':dow===6?'row-sat ':'')).trim();
     const dateCls=hol?'hol':dow===0?'sun':dow===6?'sat':'';
-    const tags=(shiftMap[ds]||[]).map((cv,ci)=>`<span class="course-tag ${colorOf(cv.colorIdx)}">${esc(cv.courseName)}<span class="rm" onclick="removeTag('${esc(ds)}',${ci})">×</span></span>`).join('');
+    const tags=(shiftMap[ds]||[]).map((cv,ci)=>`<span class="course-tag ${colorOf(cv.colorIdx)}">${esc(cv.courseName)}<span class="rm" onclick="removeTag('${esc(ds)}',${ci},event)">×</span></span>`).join('');
     const workCount=shiftStaff.filter(s=>shiftStaffMap[ds]?.[s]==='work').length;
     html+=`<tr class="sg-row ${rowCls}"><td class="sg-date ${dateCls}">${d}（${DAYS[dow]}）${hol?'<span style="color:var(--red);font-size:9px"> 祝</span>':''}</td>${shiftStaff.map(s=>{const isOff=(allReqMap[ds]||[]).includes(s);const isWork=shiftStaffMap[ds]?.[s]==='work';return `<td class="staff-cell${isWork?' is-work':isOff?' is-off':''}" onclick="toggleWork('${esc(ds)}','${esc(s)}')" ><span class="cell-icon">${isWork?'⭕':isOff?'<span style="color:#555">✕</span>':''}</span></td>`;}).join('')}<td style="text-align:center;font-weight:700;font-size:13px;color:var(--green);vertical-align:middle;min-width:44px">${workCount}</td><td class="course-cell-g" id="sc-${ds}" ondragover="onDragOver(event,'${esc(ds)}')" ondragleave="onDragLeave(event,'${esc(ds)}')" ondrop="onDrop(event,'${esc(ds)}')" onclick="onCellClick('${esc(ds)}')">${tags}</td></tr>`;
   }
@@ -346,6 +346,8 @@ function renderShiftTable(){
 }
 
 function toggleWork(ds,staff){
+  const isOff=(allReqMap[ds]||[]).includes(staff);
+  if(isOff) return; // 休み希望の日は変更不可
   if(!shiftStaffMap[ds])shiftStaffMap[ds]={};
   shiftStaffMap[ds][staff]=shiftStaffMap[ds][staff]==='work'?null:'work';
   renderShiftTable();
@@ -355,7 +357,7 @@ function onDragLeave(e,ds){document.getElementById('sc-'+ds).classList.remove('d
 function onDrop(e,ds){e.preventDefault();document.getElementById('sc-'+ds).classList.remove('drag-over');if(!dragCourse)return;addCourse(ds,dragCourse.code,dragCourse.name,dragCourse.idx);dragCourse=null;}
 function onCellClick(ds){if(!selectedPalette)return;addCourse(ds,selectedPalette.code,selectedPalette.name,selectedPalette.idx);}
 function addCourse(ds,code,name,idx){if(!shiftMap[ds])shiftMap[ds]=[];shiftMap[ds].push({courseCode:code,courseName:name,colorIdx:idx,note:''});renderShiftTable();}
-function removeTag(ds,ci){if(shiftMap[ds])shiftMap[ds].splice(ci,1);renderShiftTable();}
+function removeTag(ds,ci,e){if(e)e.stopPropagation();if(shiftMap[ds])shiftMap[ds].splice(ci,1);renderShiftTable();}
 
 async function saveShifts(){
   const from=`${year2}-${pad(month2)}-01`;
